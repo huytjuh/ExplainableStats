@@ -1,10 +1,9 @@
 import pandas as pd
 import numpy as np 
 
-import kagglehub
 
-# Download latest version
-path = kagglehub.dataset_download("fedesoriano/heart-failure-prediction")
+if __name__ == "__main__":
 
-print("Path to dataset files:", path)
-print('')
+    data = pd.read_csv('../data/heart.csv')
+
+    print(data)
