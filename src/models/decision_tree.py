@@ -11,6 +11,14 @@ def gini_index(y) -> float:
         impurity -= prob ** 2
     return impurity
 
+# create node
+# create split condition
+# create candidates best split
+# select best split
+# create branch
+# create tree
+# create leaf
+
  class DecisionTree:
     """A simple Decision Tree classifier from scratch."""
 
