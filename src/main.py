@@ -14,5 +14,6 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
     DT = DecisionTree(max_depth=5)
+    DT_fit = DT.fit(X_train, y_train)
 
-    print(DT)
+    print(DT_fit)
