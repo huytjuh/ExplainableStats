@@ -29,8 +29,9 @@ class DecisionTree:
         list_df = [pd.DataFrame({'feature': col, 'threshold': X[col].unique().tolist()}) for col in X.columns]
         df = pd.concat(list_df, ignore_index=True).sort_values(['feature', 'threshold']).reset_index(drop=True)
 
-        rows_numeric = pd.to_numeric(df['threshold'], errors='coerce').notna()
-        df.loc[rows_numeric, 'threshold'] = df.loc[rows_numeric, :].groupby('feature').rolling(window=2).mean()['threshold'].values
+        df['numeric_flg'] = pd.to_numeric(df['threshold'], errors='coerce').notna().astype(int)
+        df.loc[df['numeric_flg'] == 1, 'threshold'] = df.loc[df['numeric_flg'] == 1, :].groupby('feature').rolling(window=2).mean()['threshold'].values
+        df = df.dropna().reset_index(drop=True)
         out = df
         return out
 
