@@ -15,5 +15,9 @@ if __name__ == "__main__":
 
     DT = DecisionTree(max_depth=5)
     DT_fit = DT.fit(X_train, y_train)
+    DT_pred = DT_fit.predict(X_train)
 
-    print(DT_fit)
+    df_eval = pd.DataFrame({'y_true': y_train, 'y_pred': DT_pred})
+    accuracy = (df_eval['y_true'] == df_eval['y_pred']).mean()
+    print(f"Accuracy of Decision Tree classifier: {accuracy:.4f}")
+    print("Predictions:", np.unique(DT_pred, return_counts=True))
