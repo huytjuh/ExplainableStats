@@ -3,3 +3,4 @@
 .vscode/
 *.egg-info/
 *.ipynb
+*__pycache__
