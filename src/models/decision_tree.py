@@ -1,28 +1,23 @@
 import pandas as pd
 import numpy as np 
-
-def gini_index(y) -> float:
-    """Calculate the Gini index for a list of classes."""
-    _, list_class_counts = np.unique(y, return_counts=True)
-    p = list_class_counts / len(y)
-    gini_index = 1 - np.sum(p ** 2)
-    return gini_index
+from utils import gini_index
 
 class DecisionTree:
     """A simple Decision Tree classifier from scratch."""
 
-    def __init__(self, max_depth: int=5, min_samples_split: int=2):
+    def __init__(self, max_depth: int=5, min_samples_split: int=2, min_samples_leaf: int=1):
         """Initialize hyperparameters for the Decision Tree."""
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
         self.tree = None
 
-    def fit(self, X: pd.DataFrame, y: pd.Series):
+    def fit(self, X: pd.DataFrame, y: pd.Series) -> 'DecisionTree':
         """Train the Decision Tree classifier."""
         self.tree = self.build_tree(X, y)
         return self
 
-    def find_best_split_criterion(self, X: pd.DataFrame, y: pd.Series, eps=1e-4) -> dict:
+    def find_best_split_criterion(self, X: pd.DataFrame, y: pd.Series, eps: int=1e-4) -> dict:
         """Find the best feature and threshold to split the data."""
         # LIST OF ALL UNIQUE THRESHOLDS FOR EACH FEATURE
         list_df = [pd.DataFrame({'feature': col, 'threshold': X[col].unique().tolist()}) for col in X.columns]
@@ -50,8 +45,9 @@ class DecisionTree:
         # TO BE IMPLEMENTED LATER
         
         # SELECT BEST SPLIT BASED ON MIN SAMPLES SPLIT AND GINI INDEX
-        df['min_samples_split_flg'] = ((df['N_left'] >= self.min_samples_split) & (df['N_right'] >= self.min_samples_split)).astype(int)
-        df['gini_gain'] = np.where(df['min_samples_split_flg'] == 1, gini_index(y) - df['gini_index'], np.nan)
+        df['min_samples_split_flg'] = (df['N_left'] + df['N_right'] >= self.min_samples_split).astype(int)
+        df['min_samples_leaf_flg'] = ((df['N_left'] >= self.min_samples_leaf) & (df['N_right'] >= self.min_samples_leaf)).astype(int)
+        df['gini_gain'] = np.where(df['min_samples_split_flg'] + df['min_samples_leaf_flg'] == 2, gini_index(y) - df['gini_index'], np.nan)
         
         if pd.isna(df['gini_gain'].max()) or df['gini_gain'].max() < eps:
             return None
@@ -66,28 +62,31 @@ class DecisionTree:
     def build_tree(self, X: pd.DataFrame, y: pd.Series, depth: int=0) -> dict:
         """Recursively build the decision tree."""
 
+        # STOPPING CRITERIA
         if depth >= self.max_depth or len(y) < self.min_samples_split or len(y.unique()) == 1:
             return self.create_leaf_node(y)
         
+        # FIND BEST SPLIT CRITERION
         split_criterion = self.find_best_split_criterion(X, y)
         if split_criterion is None:
             return self.create_leaf_node(y)
         
+        # SPLIT DATA AND RECURSIVELY BUILD LEFT AND RIGHT SUBTREES
         feature, threshold, numeric_flg, gini_index = split_criterion.values()
         if numeric_flg == 1:
             idx_left, idx_right = X[feature] <= threshold, X[feature] > threshold
         else:
             idx_left, idx_right = X[feature] == threshold, X[feature] != threshold
-
         left_split = self.build_tree(X[idx_left], y[idx_left], depth + 1)
         right_split = self.build_tree(X[idx_right], y[idx_right], depth + 1)
 
-        node = {'feature': feature, 
+        # CREATE AND RETURN TREE NODE
+        tree = {'feature': feature, 
                 'threshold': threshold, 
                 'gini_index': gini_index,
                 'left_split': left_split, 
                 'right_split': right_split}
-        return node
+        return tree
 
     def predict(self, X: pd.DataFrame):
         """Predict class labels for the input data."""
@@ -99,7 +98,11 @@ class DecisionTree:
         current_node = self.tree
         while not isinstance(current_node, (int, np.int64)):
             feature, threshold = current_node['feature'], current_node['threshold']
-            current_node = current_node['left_split'] if row[feature] <= threshold else current_node['right_split']
+            if isinstance(threshold, (int, float)):
+                current_node = current_node['left_split'] if row[feature] <= threshold else current_node['right_split']
+            else:
+                current_node = current_node['left_split'] if row[feature] == threshold else current_node['right_split']
+
         return current_node
     
     def missing_value_handler(self, X: pd.DataFrame):
