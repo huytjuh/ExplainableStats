@@ -7,3 +7,4 @@ def gini_index(y) -> float:
     p = list_class_counts / len(y)
     gini_index = 1 - np.sum(p ** 2)
     return gini_index
+

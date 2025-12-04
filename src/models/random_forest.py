@@ -6,7 +6,7 @@ from models.decision_tree import DecisionTree
 class RandomForest:
     """A simple Random Forest classifier from scratch."""
 
-    def __init__(self, n_estimators: int=10, max_depth: int=5, min_samples_split: int=2, min_samples_leaf: int=1, max_features='sqrt', random_state: int=42):
+    def __init__(self, n_estimators: int=10, max_depth: int=5, min_samples_split: int=2, min_samples_leaf: int=1, max_features='sqrt', regression: bool=False, random_state: int=42):
         """Initialize hyperparameters for the Random Forest."""
         self.n_estimators = n_estimators
         self.max_depth = max_depth
@@ -14,8 +14,9 @@ class RandomForest:
         self.min_samples_leaf = min_samples_leaf
         self.random_state = random_state
         self.max_features = max_features
+        self.regression = regression
         self.list_features = None
-        self.list_tree = None
+        self.list_trees = None
 
     def fit(self, X: pd.DataFrame, y:pd.Series) -> 'RandomForest':
         """Train the Random Forest classifier."""
@@ -53,7 +54,7 @@ class RandomForest:
     
     def build_forest(self, X: pd.DataFrame, y: pd.Series, n_features: int) -> list:
         """Build the Random Forest by training multiple Decision Trees."""
-        list_tree = []
+        list_trees = []
         list_features = []
         list_oob_score = []
         for n in range(self.n_estimators):
@@ -63,7 +64,7 @@ class RandomForest:
 
             DT = DecisionTree(max_depth=self.max_depth, min_samples_split=self.min_samples_split, min_samples_leaf=self.min_samples_leaf)
             DT_fit = DT.fit(X_bootstrap, y_bootstrap)
-            list_tree.append(DT_fit)
+            list_trees.append(DT_fit)
             list_features.append(feature_subset)
 
             X_oob, y_oob = X.drop(X_bootstrap.index), y.drop(y_bootstrap.index)
@@ -71,7 +72,9 @@ class RandomForest:
             OOB_score = self.oob_score(X_oob, y_oob, DT_fit)
             list_oob_score.append(OOB_score)
 
-        return list_tree, list_features, list_oob_score
+        self.list_trees = list_trees
+
+        return list_trees, list_features, list_oob_score
 
     def oob_score(self, X: pd.DataFrame, y: pd.Series, DT: 'DecisionTree') -> float:
         """Calculate the out-of-bag (OOB) score for the Random Forest."""
@@ -89,11 +92,16 @@ class RandomForest:
     
     def predict(self, X: pd.DataFrame, proba=False) -> np.ndarray:
         """Predict class labels for samples in X."""
-        pass
+        df_pred = pd.DataFrame()
+        for n in range(self.n_estimators):
+            tree = self.list_tree[n]
+            features = self.list_features[n]
+            df_pred[f'Tree_{n}'] = tree.predict(X[features])
 
-    def predict_single(self, x: pd.Series) -> any:
-        """Predict class label for a single sample x."""
-        pass
+        if self.regression == True:
+            return None
+        RF_pred = df_pred.apply(lambda x: x.mode()[0], axis=1).values
+        return RF_pred
 
     def handle_missing_values(self, X: pd.DataFrame) -> pd.DataFrame:
         """Handle missing values in the dataset."""
