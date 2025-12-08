@@ -1,15 +1,17 @@
 import pandas as pd 
 import numpy as np 
+
 from models.decision_tree import DecisionTree
 
 def amount_of_say(x, eps=1e-4):
-    num = 1 - np.sum(x)
-    denom = np.sum(x)
-    return 0.5*np.log((num + eps)/(denom + eps))
+    """Compute the AdaBoost 'amount of say' (alpha) from weighted errors"""
+    num = 1 - np.sum(x) + eps
+    denom = np.sum(x) + eps
+    return 0.5*np.log(num/denom)
 
 class AdaBoost:
 
-    def __init__(self, n_estimators: int=10, max_depth: int=5):
+    def __init__(self, n_estimators: int=10, max_depth: int=1):
         """Initialize hyperparameters for AdaBoost."""
         self.n_estimators = n_estimators 
         self.max_depth = max_depth 
@@ -23,37 +25,31 @@ class AdaBoost:
 
     def build_forest(self, X: pd.DataFrame, y: pd.Series) -> dict:
         """Build the AdaBoost ensemble by training multiple Decision Trees."""
+        if not self.list_sample_weights:
+            self.list_sample_weights.append(np.ones(len(y)) / len(y))
+
+        sample_weights = None
+        DT = DecisionTree(max_depth=self.max_depth)
+        list_tree = []
         for n in range(self.n_estimators):
-            DT = DecisionTree(max_depth=1)
-            DT_fit = DT.fit(X, y)
+            DT_fit = DT.fit(X, y, sample_weights=sample_weights)
             DT_pred = DT_fit.predict(X)
             DT_resid = np.abs(y - DT_pred)
 
-            sample_weights = self.calculate_sample_weight(DT_resid)
-        
-        print(DT_fit.print_tree())
-        return None
+            alpha = amount_of_say(self.list_sample_weights[-1]*DT_resid)
+            sample_weights = self.calculate_sample_weight(DT_resid, alpha)
 
-    def calculate_sample_weight(self, resid: pd.Series) -> np.ndarray:
+            tree = {'DecisionTree': DT_fit, 'alpha': alpha}
+            list_tree.append(tree)
+        
+        return list_tree
+
+    def calculate_sample_weight(self, resid: np.ndarray, alpha: float) -> np.ndarray:
         """Calculate sample weights for AdaBoost."""
-        if not self.list_sample_weights:
-            sample_weights = np.ones(len(resid)) / len(resid)
-        else: 
-            list_sign = [-1 if x==0 else 1 for x in resid]
-            say = amount_of_say(self.list_sample_weights[-1]*resid)
-            sample_weights = self.list_sample_weights[-1] * np.exp(list_sign*say)
-            # print(self.list_sample_weights[-1] * resid)
-            print(list_sign*say)
-            # print(list_sign * resid)
-            # print(amount_of_say(list_sign*resid))
-            sample_weights = self.list_sample_weights[-1]
-            # sample_weights = self.list_sample_weights[-1] * amount_of_say(list_sign*resid)
-
-        # print(sample_weights)
-        self.list_sample_weights.append(sample_weights)
+        list_sign = np.array([-1 if x==0 else 1 for x in resid])
         
+        sample_weights = self.list_sample_weights[-1] * np.exp(alpha*list_sign)
+        sample_weights_scaled = sample_weights / np.sum(sample_weights)
+
+        self.list_sample_weights.append(sample_weights_scaled)
         return self.list_sample_weights[-1]
-    
-        # amount_of_say = -1 if resid is 0 else 1
-        # new_weights = self.list_sample_weights[-1] * np.exp(amount_of_say)
-        # return None

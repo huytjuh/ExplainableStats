@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np 
-from utils import gini_index
+from utils import gini_index, weighted_gini_index
 
 class DecisionTree:
     """A simple Decision Tree classifier from scratch."""
@@ -11,9 +11,13 @@ class DecisionTree:
         self.min_samples_split = min_samples_split
         self.min_samples_leaf = min_samples_leaf
         self.tree = None
+        self.sample_weights = None
 
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> 'DecisionTree':
+    def fit(self, X: pd.DataFrame, y: pd.Series, sample_weights: np.ndarray=None) -> 'DecisionTree':
         """Train the Decision Tree classifier."""
+        if sample_weights is not None:
+            self.sample_weights = sample_weights
+
         self.tree = self.build_tree(X, y)
         return self
 
@@ -40,6 +44,20 @@ class DecisionTree:
         df['N_left'], df['N_right'] = df['pred_left'].str.len(), df['pred_right'].str.len()
         df['gini_left'], df['gini_right'] = df['pred_left'].apply(lambda x: gini_index(x)), df['pred_right'].apply(lambda x: gini_index(x))
         df['gini_index'] = (df['N_left']*df['gini_left'] + df['N_right']*df['gini_right']) / (df['N_left'] + df['N_right'])
+
+        if self.sample_weights is not None:
+            X, y = X.reset_index(drop=True), y.reset_index(drop=True)
+            for feature in df['feature'].unique():
+                df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 1), 'idx_left'] = df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 1), 'threshold'].apply(lambda x: X[X[feature] <= x].index.tolist())
+                df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 1), 'idx_right'] = df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 1), 'threshold'].apply(lambda x: X[X[feature] > x].index.tolist())
+                
+                df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 0), 'idx_left'] = df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 0), 'threshold'].apply(lambda x: X[X[feature] == x].index.tolist())
+                df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 0), 'idx_right'] = df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 0), 'threshold'].apply(lambda x: X[X[feature] != x].index.tolist())
+
+            df['W_left'], df['W_right'] = df['idx_left'].apply(lambda x: self.sample_weights[x]), df['idx_right'].apply(lambda x: self.sample_weights[x])
+            df['W_left_total'], df['W_right_total'] = df['W_left'].apply(lambda x: np.sum(x)), df['W_right'].apply(lambda x: np.sum(x))
+            df['gini_left'], df['gini_right'] = df.apply(lambda x: weighted_gini_index(x['pred_left'], x['W_left']), axis=1), df.apply(lambda x: weighted_gini_index(x['pred_right'], x['W_right']), axis=1)
+            df['gini_index'] = (df['W_left_total']*df['gini_left'] + df['W_right_total']*df['gini_right'])
 
         # IF REGRESSION, CALCULATE MSE FOR EACH CANDIDATE SPLIT
         # TO BE IMPLEMENTED LATER

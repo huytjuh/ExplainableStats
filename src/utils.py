@@ -8,3 +8,10 @@ def gini_index(y) -> float:
     gini_index = 1 - np.sum(p ** 2)
     return gini_index
 
+def weighted_gini_index(y, sample_weights) -> float:
+    """Calculate the weighted Gini index for a list of classes."""
+    list_class_counts = np.bincount(y, weights=sample_weights, minlength=len(np.unique(y)))
+    p = list_class_counts / np.sum(sample_weights)
+    gini_index = 1 - np.sum(p ** 2)
+    return gini_index
+
