@@ -109,3 +109,9 @@ class DecisionTree:
         """Handle missing values in the dataset."""
         # TO BE IMPLEMENTED LATER
         pass
+
+    def print_tree(self):
+        """Print the structure of the decision tree."""
+        if not self.tree:
+            raise ValueError("The tree has not been fitted yet.")
+        return self.tree
