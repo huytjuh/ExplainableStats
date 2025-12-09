@@ -11,10 +11,9 @@ def amount_of_say(x, eps=1e-4):
 
 class AdaBoost:
 
-    def __init__(self, n_estimators: int=10, max_depth: int=1):
+    def __init__(self, n_estimators: int=10):
         """Initialize hyperparameters for AdaBoost."""
         self.n_estimators = n_estimators 
-        self.max_depth = max_depth 
         self.list_sample_weights = []
         self.list_trees = []
 
@@ -29,7 +28,7 @@ class AdaBoost:
             self.list_sample_weights.append(np.ones(len(y)) / len(y))
 
         sample_weights = None
-        DT = DecisionTree(max_depth=self.max_depth)
+        DT = DecisionTree(max_depth=1)
         list_tree = []
         for n in range(self.n_estimators):
             DT_fit = DT.fit(X, y, sample_weights=sample_weights)
@@ -53,3 +52,16 @@ class AdaBoost:
 
         self.list_sample_weights.append(sample_weights_scaled)
         return self.list_sample_weights[-1]
+
+    
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        """Predict class labels for the input data."""
+        df_pred = pd.DataFrame()
+        for n in range(self.n_estimators):
+            tree = self.list_trees[n]['DecisionTree']
+            alpha = self.list_trees[n]['alpha']
+            df_pred[f'Tree_{n}'] = alpha * tree.predict(X)
+
+        AB_pred = df_pred.sum(axis=1) / np.sum([tree['alpha'] for tree in self.list_trees])
+        AB_pred = np.where(AB_pred > 0.5, 1, 0)
+        return AB_pred

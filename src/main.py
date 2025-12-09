@@ -33,6 +33,11 @@ if __name__ == "__main__":
     # print(f"Accuracy of Random Forest classifier: {accuracy:.4f}")
     # print("Predictions:", np.unique(RF_pred, return_counts=True))
 
-    AB = AdaBoost(n_estimators=2)
+    AB = AdaBoost(n_estimators=3)
     AB_fit = AB.fit(X_train, y_train)
-    print(AB_fit)
+    AB_pred = AB_fit.predict(X_test)
+
+    df_eval = pd.DataFrame({'y_true': y_test.values, 'y_pred': AB_pred})
+    accuracy = (df_eval['y_true'] == df_eval['y_pred']).mean()
+    print(f"Accuracy of AdaBoost classifier: {accuracy:.4f}")
+    print("Predictions:", np.unique(AB_pred, return_counts=True))
