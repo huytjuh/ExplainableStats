@@ -5,6 +5,7 @@ from sklearn.model_selection import train_test_split
 from models.decision_tree import DecisionTree
 from models.random_forest import RandomForest
 from models.adaboost import AdaBoost
+from models.xgboost import XGBoost
 
 if __name__ == "__main__":
 
@@ -33,9 +34,18 @@ if __name__ == "__main__":
     # print(f"Accuracy of Random Forest classifier: {accuracy:.4f}")
     # print("Predictions:", np.unique(RF_pred, return_counts=True))
 
-    AB = AdaBoost(n_estimators=3)
-    AB_fit = AB.fit(X_train, y_train)
-    AB_pred = AB_fit.predict(X_test)
+    # AB = AdaBoost(n_estimators=3)
+    # AB_fit = AB.fit(X_train, y_train)
+    # AB_pred = AB_fit.predict(X_test)
+
+    # df_eval = pd.DataFrame({'y_true': y_test.values, 'y_pred': AB_pred})
+    # accuracy = (df_eval['y_true'] == df_eval['y_pred']).mean()
+    # print(f"Accuracy of AdaBoost classifier: {accuracy:.4f}")
+    # print("Predictions:", np.unique(AB_pred, return_counts=True))
+
+    XGB = XGBoost(n_estimators=3)
+    XGB_fit = XGB.fit(X_train, y_train)
+    XGB_pred = XGB_fit.predict(X_test)
 
     df_eval = pd.DataFrame({'y_true': y_test.values, 'y_pred': AB_pred})
     accuracy = (df_eval['y_true'] == df_eval['y_pred']).mean()
