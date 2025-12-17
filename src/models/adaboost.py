@@ -33,10 +33,10 @@ class AdaBoost:
         for n in range(self.n_estimators):
             DT_fit = DT.fit(X, y, sample_weights=sample_weights)
             DT_pred = DT_fit.predict(X)
-            DT_resid = np.abs(y - DT_pred)
-
-            alpha = amount_of_say(self.list_sample_weights[-1]*DT_resid)
-            sample_weights = self.calculate_sample_weight(DT_resid, alpha)
+            
+            resid = np.abs(y - DT_pred)
+            alpha = amount_of_say(self.list_sample_weights[-1]*resid)
+            sample_weights = self.calculate_sample_weight(resid, alpha)
 
             tree = {'DecisionTree': DT_fit, 'alpha': alpha}
             list_tree.append(tree)
@@ -57,10 +57,10 @@ class AdaBoost:
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         """Predict class labels for the input data."""
         df_pred = pd.DataFrame()
-        for n in range(self.n_estimators):
-            tree = self.list_trees[n]['DecisionTree']
-            alpha = self.list_trees[n]['alpha']
-            df_pred[f'Tree_{n}'] = alpha * tree.predict(X)
+        for DT in self.list_trees:
+            tree = DT['DecisionTree']
+            alpha = DT['alpha']
+            df_pred[f'Tree_{self.list_trees.index(DT)}'] = alpha * tree.predict(X)            
 
         AB_pred = df_pred.sum(axis=1) / np.sum([tree['alpha'] for tree in self.list_trees])
         AB_pred = np.where(AB_pred > 0.5, 1, 0)

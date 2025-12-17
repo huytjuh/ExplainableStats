@@ -2,23 +2,31 @@ import pandas as pd
 import numpy as np 
 from typing import Optional
 
-from utils import gini_index, weighted_gini_index
+from utils import gini_index, weighted_gini_index, similarity_score, coverage_score
 
 class DecisionTree:
     """A simple Decision Tree classifier from scratch."""
 
-    def __init__(self, max_depth: int=5, min_samples_split: int=2, min_samples_leaf: int=1):
+    def __init__(self, max_depth: int=5, min_samples_split: int=2, min_samples_leaf: int=1, gamma: float=0.0, lmbda: float=1.0, min_child_weight: int=1):
         """Initialize hyperparameters for the Decision Tree."""
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
         self.min_samples_leaf = min_samples_leaf
+        self.gamma = gamma
+
+        # XGBOOST HYPERPARAMETERS
+        self.lmbda = lmbda
+        self.min_child_weight = min_child_weight
+
         self.tree = None
         self.sample_weights = None
         self.split_criterion = None
 
     def fit(self, X: pd.DataFrame, y: pd.Series, split_criterion: str='gini', sample_weights: Optional[np.ndarray]=None) -> 'DecisionTree':
         """Train the Decision Tree classifier."""
-        if split_criterion == 'weighted_gini' and sample_weights is not None:
+        if split_criterion == 'gini':
+            self.split_criterion = split_criterion
+        elif split_criterion == 'weighted_gini' and sample_weights is not None:
             self.split_criterion = split_criterion
             self.sample_weights = sample_weights
         elif split_criterion == 'gain':
@@ -75,12 +83,14 @@ class DecisionTree:
         
         # XGBOOST: CALCULATE GAIN FOR EACH CANDIDATE SPLIT
         if self.split_criterion == 'gain':
-            return
-
-            
+            df['sim_parent'] = similarity_score(y.tolist(), self.lmbda) 
+            df['sim_left'], df['sim_right'] = df['pred_left'].apply(lambda x: similarity_score(x, self.lmbda)), df['pred_right'].apply(lambda x: similarity_score(x, self.lmbda))
+            df['cov_left'], df['cov_right'] = df['pred_left'].str.len(), df['pred_right'].str.len()
+            df['min_child_weight'] = ((df['cov_left'] >= self.min_child_weight) & (df['cov_right'] >= self.min_child_weight)).astype(int)
+            df['gain'] = np.where(df['min_samples_split_flg'] + df['min_samples_leaf_flg'] + df['min_child_weight'] == 3, df['sim_left'] + df['sim_right'] - df['sim_parent'] - self.gamma, np.nan)
+        
         # IF REGRESSION, CALCULATE MSE FOR EACH CANDIDATE SPLIT
         # TO BE IMPLEMENTED LATER
-        
         
         if pd.isna(df['gain'].max()) or df['gain'].max() < eps:
             return None
@@ -90,8 +100,9 @@ class DecisionTree:
     
     def create_leaf_node(self, y: pd.Series) -> np.ndarray:
         """Create a leaf node by majority class for classification and average for regression."""
-        pred = y.mode()[0]
-        return pred
+        if self.split_criterion == 'gain':
+            return float(y.mean())
+        return y.mode()[0]
 
     def build_tree(self, X: pd.DataFrame, y: pd.Series, depth: int=0) -> dict:
         """Recursively build the decision tree."""
@@ -106,7 +117,7 @@ class DecisionTree:
             return self.create_leaf_node(y)
         
         # SPLIT DATA AND RECURSIVELY BUILD LEFT AND RIGHT SUBTREES
-        feature, threshold, numeric_flg, gini_index = split_criterion.values()
+        feature, threshold, numeric_flg, score = split_criterion.values()
         if numeric_flg == 1:
             idx_left, idx_right = X[feature] <= threshold, X[feature] > threshold
         else:
@@ -117,9 +128,10 @@ class DecisionTree:
         # CREATE AND RETURN TREE NODE
         tree = {f'feature': feature, 
                 'threshold': threshold, 
-                '{self.split_criterion}': gini_index,
+                '{self.split_criterion}': score,
                 'left_split': left_split, 
                 'right_split': right_split}
+
         return tree
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
@@ -130,7 +142,7 @@ class DecisionTree:
     def predict_single(self, row: pd.Series) -> int:
         """Predict the class label for a single data point."""
         current_node = self.tree
-        while not isinstance(current_node, (int, np.int64)):
+        while isinstance(current_node, dict):
             feature, threshold = current_node['feature'], current_node['threshold']
             if isinstance(threshold, (int, float)):
                 current_node = current_node['left_split'] if row[feature] <= threshold else current_node['right_split']

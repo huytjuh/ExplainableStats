@@ -15,3 +15,12 @@ def weighted_gini_index(y, sample_weights) -> float:
     gini_index = 1 - np.sum(p ** 2)
     return gini_index
 
+def similarity_score(resid: list, lmbda: float=1.0) -> float:
+    """Calculate similarity score for each tree."""
+    resid = np.array(resid)
+    return np.sum(resid)**2 / (len(resid) + lmbda)
+
+def coverage_score(resid: list) -> float:
+    """Calculate coverage score for each tree."""
+    resid = np.array(resid)
+    return len(resid)

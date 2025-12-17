@@ -25,7 +25,7 @@ if __name__ == "__main__":
     # print(f"Accuracy of Decision Tree classifier: {accuracy:.4f}")
     # print("Predictions:", np.unique(DT_pred, return_counts=True))
 
-    # RF = RandomForest(n_estimators=10, max_depth=5)
+    # RF = RandomForest(n_estimators=3, max_depth=5)
     # RF_fit = RF.fit(X_train, y_train)
     # RF_pred = RF_fit.predict(X_test)
 
@@ -43,11 +43,11 @@ if __name__ == "__main__":
     # print(f"Accuracy of AdaBoost classifier: {accuracy:.4f}")
     # print("Predictions:", np.unique(AB_pred, return_counts=True))
 
-    XGB = XGBoost(n_estimators=3)
+    XGB = XGBoost(n_estimators=10, learning_rate=0.5)
     XGB_fit = XGB.fit(X_train, y_train)
     XGB_pred = XGB_fit.predict(X_test)
 
-    df_eval = pd.DataFrame({'y_true': y_test.values, 'y_pred': AB_pred})
+    df_eval = pd.DataFrame({'y_true': y_test.values, 'y_pred': XGB_pred})
     accuracy = (df_eval['y_true'] == df_eval['y_pred']).mean()
-    print(f"Accuracy of AdaBoost classifier: {accuracy:.4f}")
-    print("Predictions:", np.unique(AB_pred, return_counts=True))
+    print(f"Accuracy of XGBoost classifier: {accuracy:.4f}")
+    print("Predictions:", np.unique(XGB_pred, return_counts=True))
