@@ -10,7 +10,7 @@ def amount_of_say(x, eps=1e-4):
     return 0.5*np.log(num/denom)
 
 class AdaBoost:
-
+    """AdaBoost classifier from scratch."""
     def __init__(self, n_estimators: int=10):
         """Initialize hyperparameters for AdaBoost."""
         self.n_estimators = n_estimators 

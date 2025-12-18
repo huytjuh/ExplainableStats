@@ -4,7 +4,7 @@ import numpy as np
 from models.decision_tree import DecisionTree
 
 class XGBoost:
-
+    """XGBoost classifier from scratch."""
     def __init__(self, learning_rate: float=0.1, n_estimators: int=10, max_depth: int=5, min_samples_split: int=5, min_samples_leaf: int=2, gamma: float=0.0, lmbda: float=1.0, min_child_weight: float=1.0):
         """Initialize hyperparameters for XGBoost."""
         self.learning_rate = learning_rate
@@ -38,8 +38,6 @@ class XGBoost:
 
             y_pred = y_pred + self.learning_rate * DT_pred
             resid = y - y_pred
-
-            print(y_pred)
             list_tree.append(DT_fit)
             
         return list_tree
