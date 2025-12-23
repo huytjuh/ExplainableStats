@@ -23,6 +23,18 @@ class SVM:
         else:
             raise ValueError(f"Kernel {self.kernel} is not supported.")
 
+    def _primal_objective(self, alpha: np.ndarray, y: np.ndarray, K: np.ndarray) -> float:
+        return 0.5 * alpha.T @ K @ alpha - alpha.T @ y
+
+    def soft_margin(self, alpha: np.ndarray, y: np.ndarray, K: np.ndarray) -> np.ndarray:
+        return alpha
+
+    def _lagrange_multiplier(self, alpha: np.ndarray, y: np.ndarray, K: np.ndarray) -> np.ndarray:
+        return alpha
+    
+    def _dual_objective(self, alpha: np.ndarray, y: np.ndarray, K: np.ndarray) -> float:
+        return 0.5 * alpha.T @ K @ alpha
+
     def decision_boundary():
         pass
 
