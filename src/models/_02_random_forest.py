@@ -1,7 +1,7 @@
 import pandas as pd 
 import numpy as np 
 
-from models.decision_tree import DecisionTree
+from models._01_decision_tree import DecisionTree
 
 class RandomForest:
     """A simple Random Forest classifier from scratch."""

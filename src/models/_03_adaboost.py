@@ -1,7 +1,7 @@
 import pandas as pd 
 import numpy as np 
 
-from models.decision_tree import DecisionTree
+from models._01_decision_tree import DecisionTree
 
 def amount_of_say(x, eps=1e-4):
     """Compute the AdaBoost 'amount of say' (alpha) from weighted errors"""

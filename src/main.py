@@ -3,11 +3,12 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
-from models.decision_tree import DecisionTree
-from models.random_forest import RandomForest
-from models.adaboost import AdaBoost
-from models.xgboost import XGBoost
-from models.svm import SVM
+from models._01_decision_tree import DecisionTree
+from models._02_random_forest import RandomForest
+from models._03_adaboost import AdaBoost
+from models._04_xgboost import XGBoost
+from models._05_svm import SVM
+from models._06_naive_bayes import NaiveBayes
 
 if __name__ == "__main__":
 
@@ -58,5 +59,13 @@ if __name__ == "__main__":
     # print(f"Accuracy of XGBoost classifier: {accuracy:.4f}")
     # print("Predictions:", np.unique(XGB_pred, return_counts=True))
 
-    SVM = SVM(kernel='rbf', C=1.0, learning_rate=0.1, n_iter=10000)
-    SVM_fit = SVM.fit(X_train_scaled, y_train)
+    # SVM = SVM(kernel='rbf', C=1.0, learning_rate=0.1, n_iter=10000)
+    # SVM_fit = SVM.fit(X_train_scaled, y_train)
+
+    NB = NaiveBayes(method='gaussian')
+    NB_fit = NB.fit(X_train_scaled, y_train)
+    NB_pred = NB_fit.predict(X_test_scaled)
+    df_eval = pd.DataFrame({'y_true': y_test.values, 'y_pred': NB_pred})
+    accuracy = (df_eval['y_true'] == df_eval['y_pred']).mean()
+    print(f"Accuracy of Naive Bayes classifier: {accuracy:.4f}")
+    print("Predictions:", np.unique(NB_pred, return_counts=True))
