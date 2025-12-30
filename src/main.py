@@ -9,6 +9,7 @@ from models._03_adaboost import AdaBoost
 from models._04_xgboost import XGBoost
 from models._05_svm import SVM
 from models._06_naive_bayes import NaiveBayes
+from models._07_logistic_regression import LogisticRegression
 
 if __name__ == "__main__":
 
@@ -62,10 +63,18 @@ if __name__ == "__main__":
     # SVM = SVM(kernel='rbf', C=1.0, learning_rate=0.1, n_iter=10000)
     # SVM_fit = SVM.fit(X_train_scaled, y_train)
 
-    NB = NaiveBayes(method='gaussian')
-    NB_fit = NB.fit(X_train_scaled, y_train)
-    NB_pred = NB_fit.predict(X_test_scaled)
-    df_eval = pd.DataFrame({'y_true': y_test.values, 'y_pred': NB_pred})
+    # NB = NaiveBayes(method='gaussian')
+    # NB_fit = NB.fit(X_train_scaled, y_train)
+    # NB_pred = NB_fit.predict(X_test_scaled)
+    # df_eval = pd.DataFrame({'y_true': y_test.values, 'y_pred': NB_pred})
+    # accuracy = (df_eval['y_true'] == df_eval['y_pred']).mean()
+    # print(f"Accuracy of Naive Bayes classifier: {accuracy:.4f}")
+    # print("Predictions:", np.unique(NB_pred, return_counts=True))
+
+    Logit = LogisticRegression(learning_rate=0.01, n_iter=1000)
+    Logit_fit = Logit.fit(X_train_scaled, y_train)
+    Logit_pred = Logit_fit.predict(X_test_scaled)
+    df_eval = pd.DataFrame({'y_true': y_test.values, 'y_pred': Logit_pred})
     accuracy = (df_eval['y_true'] == df_eval['y_pred']).mean()
-    print(f"Accuracy of Naive Bayes classifier: {accuracy:.4f}")
-    print("Predictions:", np.unique(NB_pred, return_counts=True))
+    print(f"Accuracy of Logistic Regression classifier: {accuracy:.4f}")
+    print("Predictions:", np.unique(Logit_pred, return_counts=True))
