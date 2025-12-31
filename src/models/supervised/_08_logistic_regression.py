@@ -17,6 +17,7 @@ class LogisticRegression:
     def fit(self, X: pd.DataFrame, y: pd.Series) -> 'LogisticRegression':
         """Train the Logistic Regression classifier."""
         self.maximum_likelihood_estimate(X, y, self.w, self.b)
+        self.model_summary()
         return self 
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
@@ -65,3 +66,8 @@ class LogisticRegression:
     def _linear_model(self, X: pd.DataFrame, w: np.ndarray, b: float) -> np.ndarray:
         """Calculate the linear combination of inputs and weights."""
         return np.dot(X, w) + b
+
+    def model_summary(self) -> None:
+        """Print the model summary."""
+        print("Weights:", self.w)
+        print("Bias:", self.b)

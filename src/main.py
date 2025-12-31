@@ -3,13 +3,13 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
-from models._01_decision_tree import DecisionTree
-from models._02_random_forest import RandomForest
-from models._03_adaboost import AdaBoost
-from models._04_xgboost import XGBoost
-from models._05_svm import SVM
-from models._06_naive_bayes import NaiveBayes
-from models._07_logistic_regression import LogisticRegression
+from models.supervised._01_decision_tree import DecisionTree
+from models.supervised._02_random_forest import RandomForest
+from models.supervised._03_adaboost import AdaBoost
+from models.supervised._04_xgboost import XGBoost
+from models.supervised._05_svm import SVM
+from models.supervised._06_naive_bayes import NaiveBayes
+from models.supervised._07_logistic_regression import LogisticRegression
 
 if __name__ == "__main__":
 
