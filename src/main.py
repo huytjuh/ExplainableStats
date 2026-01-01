@@ -10,6 +10,7 @@ from models.supervised._04_xgboost import XGBoost
 from models.supervised._05_svm import SVM
 from models.supervised._06_naive_bayes import NaiveBayes
 from models.supervised._07_logistic_regression import LogisticRegression
+from models.supervised._11_perceptron import Perceptron
 
 if __name__ == "__main__":
 
@@ -71,10 +72,18 @@ if __name__ == "__main__":
     # print(f"Accuracy of Naive Bayes classifier: {accuracy:.4f}")
     # print("Predictions:", np.unique(NB_pred, return_counts=True))
 
-    Logit = LogisticRegression(learning_rate=0.01, n_iter=1000)
-    Logit_fit = Logit.fit(X_train_scaled, y_train)
-    Logit_pred = Logit_fit.predict(X_test_scaled)
-    df_eval = pd.DataFrame({'y_true': y_test.values, 'y_pred': Logit_pred})
+    # Logit = LogisticRegression(learning_rate=0.01, n_iter=1000)
+    # Logit_fit = Logit.fit(X_train_scaled, y_train)
+    # Logit_pred = Logit_fit.predict(X_test_scaled)
+    # df_eval = pd.DataFrame({'y_true': y_test.values, 'y_pred': Logit_pred})
+    # accuracy = (df_eval['y_true'] == df_eval['y_pred']).mean()
+    # print(f"Accuracy of Logistic Regression classifier: {accuracy:.4f}")
+    # print("Predictions:", np.unique(Logit_pred, return_counts=True))
+
+    Percep = Perceptron(learning_rate=0.01, n_iter=1000)
+    Percep_fit = Percep.fit(X_train_scaled, y_train)
+    Percep_pred = Percep_fit.predict(X_test_scaled)
+    df_eval = pd.DataFrame({'y_true': y_test.values, 'y_pred': Percep_pred})
     accuracy = (df_eval['y_true'] == df_eval['y_pred']).mean()
-    print(f"Accuracy of Logistic Regression classifier: {accuracy:.4f}")
-    print("Predictions:", np.unique(Logit_pred, return_counts=True))
+    print(f"Accuracy of Perceptron classifier: {accuracy:.4f}")
+    print("Predictions:", np.unique(Percep_pred, return_counts=True))

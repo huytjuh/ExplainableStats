@@ -10,7 +10,7 @@ class LogisticRegression:
         self.lr = learning_rate
         self.n_iter = n_iter
         self.tol = tol
-
+        
         self.w = None 
         self.b = None
 

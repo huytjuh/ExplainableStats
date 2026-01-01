@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-from models._01_decision_tree import DecisionTree
+from models.supervised._01_decision_tree import DecisionTree
 
 class XGBoost:
     """XGBoost classifier from scratch."""
