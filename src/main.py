@@ -11,6 +11,7 @@ from models.supervised._05_svm import SVM
 from models.supervised._06_naive_bayes import NaiveBayes
 from models.supervised._07_logistic_regression import LogisticRegression
 from models.supervised._11_perceptron import Perceptron
+from models.supervised._12_nn import NeuralNetwork  
 
 if __name__ == "__main__":
 
@@ -87,3 +88,9 @@ if __name__ == "__main__":
     # accuracy = (df_eval['y_true'] == df_eval['y_pred']).mean()
     # print(f"Accuracy of Perceptron classifier: {accuracy:.4f}")
     # print("Predictions:", np.unique(PPN_pred, return_counts=True))
+
+    NN = NeuralNetwork(hidden_layers=[10, 10], learning_rate=0.01)
+    NN_fit = NN.fit(X_train_scaled, y_train)
+
+    print(NN_fit)
+    
