@@ -91,6 +91,8 @@ if __name__ == "__main__":
 
     NN = NeuralNetwork(hidden_layers=[10, 10], learning_rate=0.01)
     NN_fit = NN.fit(X_train_scaled, y_train)
-
-    print(NN_fit)
-    
+    NN_pred = NN_fit.predict(X_test_scaled)
+    df_eval = pd.DataFrame({'y_true': y_test.values, 'y_pred': NN_pred})
+    accuracy = (df_eval['y_true'] == df_eval['y_pred']).mean()
+    print(f"Accuracy of Neural Network classifier: {accuracy:.4f}")
+    print("Predictions:", np.unique(NN_pred, return_counts=True))
