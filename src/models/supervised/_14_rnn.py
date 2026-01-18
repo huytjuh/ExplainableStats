@@ -17,6 +17,18 @@ class RNN:
 
     def fit(self, X: pd.DataFrame, y: pd.Series) -> 'RNN':
         """Train the RNN classifier."""
+        X = X.values if isinstance(X, pd.DataFrame) else X
+        y = y.values if isinstance(y, (pd.Series, pd.DataFrame)) else y
+        n_features, n_samples = X.shape
+
+        X_seq = X.reshape(n_features, 1, n_samples)
+        y_seq = y.reshape(-1, 1)
+
+        self._initialize_weights(n_features)
+        list_loss = [np.inf]
+
+        self._forward_propagation(X_seq)
+
         return self
     
     def predict(self, X: pd.DataFrame) -> np.ndarray:
@@ -25,7 +37,17 @@ class RNN:
     
     def _initialize_weights(self, n_features: int) -> None:
         """Initialize weights and biases for the network."""
-        pass
+        self.W, self.b = {}, {}
+        prev_layer_size = n_features
+        for i in range(len(self.hidden_layers)):
+            self.W[f'W_{i}'] = np.random.randn(prev_layer_size, self.hidden_layers[i]) * np.sqrt(2 / prev_layer_size)
+            self.b[f'b_{i}'] = np.zeros((1, self.hidden_layers[i]))
+            prev_layer_size = self.hidden_layers[i]
+
+        self.W['W_rec'] = np.random.randn(self.hidden_layers[-1], self.hidden_layers[-1]) * np.sqrt(2 / prev_layer_size)
+        self.b['b_rec'] = np.zeros((1, self.hidden_layers[-1]))
+        self.W['W_out'] = np.random.randn(self.hidden_layers[-1], 1) * np.sqrt(2 / prev_layer_size)
+        self.b['b_out'] = np.zeros((1, 1))
 
     def _forward_propagation(self, X: np.ndarray) -> None:
         """Perform forward propagation through the network."""
