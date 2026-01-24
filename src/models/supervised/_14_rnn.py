@@ -5,11 +5,12 @@ from typing import List
 class RNN:
     """Recurrent Neural Network (RNN) classifier from scratch."""
     
-    def __init__(self, hidden_layers: List[int]=[10], learning_rate: float=0.01, epochs: int=1000, tol: float=1e-5):
+    def __init__(self, hidden_layers: List[int]=[10], learning_rate: float=0.01, epochs: int=1000, batch_size: int=32, tol: float=1e-5):
         """Initialize hyperparameters for RNN."""
         self.hidden_layers = hidden_layers
         self.lr = learning_rate 
         self.epochs = epochs
+        self.batch_size = batch_size
         self.tol = tol
 
         self.hidden_activation = 'relu'
@@ -20,11 +21,17 @@ class RNN:
         self.Wh = {}
         self.b = {}
 
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> 'RNN':
+    def fit(self, X: pd.DataFrame, y: pd.Series, ) -> 'RNN':
         """Train the RNN classifier."""
         X = X.values if isinstance(X, pd.DataFrame) else X
         y = y.values if isinstance(y, (pd.Series, pd.DataFrame)) else y
         n_samples, n_features = X.shape
+
+        
+
+        X_seq = [X[i:]]
+
+
 
         y = y.reshape(-1, 1)
 
@@ -66,7 +73,7 @@ class RNN:
                 Z = self.cache[f'A_{i}'][t] @ self.W[f'W_{i}'] + self.cache[f'H_{i+1}'][t] @ self.Wh[f'Wh_{i}'] + self.b[f'b_{i}']
                 self.cache[f'Z_{i+1}'][t] = Z
                 self.cache[f'A_{i+1}'][t] = self._activation_func(Z, method=self.hidden_activation)
-                self.cache[f'H_{i+1}'][t] = self.cache[f'A_{i+1}'][t]
+                self.cache[f'H_{i+1}'][t+1] = self.cache[f'A_{i+1}'][t]
 
         print(self.cache)
 
