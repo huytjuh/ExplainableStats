@@ -29,8 +29,10 @@ class RNN:
 
         self._initialize_weights(n_features)
         list_loss = [np.inf]
-        self._forward_propagation(X)
+        y_pred = self._forward_propagation(X, n_samples, timesteps)
 
+
+        print(y_pred)
         return self
     
     def predict(self, X: pd.DataFrame) -> np.ndarray:
@@ -50,17 +52,10 @@ class RNN:
         self.W['W_out'] = np.random.randn(self.hidden_layers[-1], 1) * np.sqrt(2 / prev_layer_size)
         self.b['b_out'] = np.zeros((1, 1))
 
-    def _forward_propagation(self, X: np.ndarray) -> None:
+    def _forward_propagation(self, X: np.ndarray, n_samples: int, timesteps: int) -> None:
         """Perform forward propagation through the network."""
-        n_samples, timesteps, n_features = X.shape
-
         self.cache = {'A_0': X}
         self.cache['H_0'] = np.zeros((n_samples, self.hidden_layers[0]))
-        # for i in range(len(self.hidden_layers)):
-        #     self.cache[f'A_{i+1}'] = np.zeros((n_samples, self.hidden_layers[i]))
-        #     self.cache[f'Z_{i+1}'] = np.zeros((n_samples, self.hidden_layers[i]))
-        #     self.cache[f'H_{i+1}'] = np.zeros((n_samples, self.hidden_layers[i]))
-
         for t in range(timesteps):
             for i in range(len(self.hidden_layers)):
                 Z = self.cache[f'A_0'][:, t, :] @ self.W[f'W_{i}'] + self.cache[f'H_{i}'] @ self.Wh[f'Wh_{i}'] + self.b[f'b_{i}']
@@ -76,6 +71,7 @@ class RNN:
 
     def _backward_propagation(self, X: np.ndarray, y: np.ndarray, y_pred: np.ndarray) -> None:
         """Perform backward propagation to update weights and biases."""
+ 
         pass
 
     def _activation_func(self, y: np.ndarray, method='relu') -> np.ndarray:
