@@ -29,7 +29,7 @@ class RNN:
 
         self._initialize_weights(n_features)
         list_loss = [np.inf]
-        self._forward_propagation(X, n_samples)
+        self._forward_propagation(X)
 
         return self
     
@@ -50,24 +50,29 @@ class RNN:
         self.W['W_out'] = np.random.randn(self.hidden_layers[-1], 1) * np.sqrt(2 / prev_layer_size)
         self.b['b_out'] = np.zeros((1, 1))
 
-    def _forward_propagation(self, X: np.ndarray, n_samples: int) -> None:
+    def _forward_propagation(self, X: np.ndarray) -> None:
         """Perform forward propagation through the network."""
+        n_samples, timesteps, n_features = X.shape
+
         self.cache = {'A_0': X}
-        for i in range(len(self.hidden_layers)):
-            self.cache[f'A_{i+1}'] = np.zeros((n_samples, self.hidden_layers[i]))
-            self.cache[f'Z_{i+1}'] = np.zeros((n_samples, self.hidden_layers[i]))
-            self.cache[f'H_{i+1}'] = np.zeros((n_samples, self.hidden_layers[i]))
+        self.cache['H_0'] = np.zeros((n_samples, self.hidden_layers[0]))
+        # for i in range(len(self.hidden_layers)):
+        #     self.cache[f'A_{i+1}'] = np.zeros((n_samples, self.hidden_layers[i]))
+        #     self.cache[f'Z_{i+1}'] = np.zeros((n_samples, self.hidden_layers[i]))
+        #     self.cache[f'H_{i+1}'] = np.zeros((n_samples, self.hidden_layers[i]))
 
-        for t in range(n_samples): 
+        for t in range(timesteps):
             for i in range(len(self.hidden_layers)):
-                Z = self.cache[f'A_{i}'][t] @ self.W[f'W_{i}'] + self.cache[f'H_{i+1}'][t] @ self.Wh[f'Wh_{i}'] + self.b[f'b_{i}']
-                self.cache[f'Z_{i+1}'][t] = Z
-                self.cache[f'A_{i+1}'][t] = self._activation_func(Z, method=self.hidden_activation)
-                self.cache[f'H_{i+1}'][t+1] = self.cache[f'A_{i+1}'][t]
+                Z = self.cache[f'A_0'][:, t, :] @ self.W[f'W_{i}'] + self.cache[f'H_{i}'] @ self.Wh[f'Wh_{i}'] + self.b[f'b_{i}']
+                self.cache[f'Z_{i+1}'] = Z
+                self.cache[f'A_{i+1}'] = self._activation_func(Z, method=self.hidden_activation)
+                self.cache[f'H_{i}'] = self.cache[f'A_{i+1}']
 
-        print(self.cache)
+            Z_out = self.cache[f'A_{len(self.hidden_layers)}'] @ self.W['W_out'] + self.b['b_out']
+            self.cache['Z_out'] = Z_out
+            self.cache['A_out'] = self._activation_func(Z_out, method=self.output_activation)
 
-        return
+        return self.cache['A_out']
 
     def _backward_propagation(self, X: np.ndarray, y: np.ndarray, y_pred: np.ndarray) -> None:
         """Perform backward propagation to update weights and biases."""
