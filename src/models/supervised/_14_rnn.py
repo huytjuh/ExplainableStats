@@ -25,20 +25,10 @@ class RNN:
         """Train the RNN classifier."""
         X = X.values if isinstance(X, pd.DataFrame) else X
         y = y.values if isinstance(y, (pd.Series, pd.DataFrame)) else y
-        n_samples, n_features = X.shape
-
-        
-
-        X_seq = [X[i:]]
-
-
-
-        y = y.reshape(-1, 1)
+        n_samples, timesteps, n_features = X.shape
 
         self._initialize_weights(n_features)
         list_loss = [np.inf]
-
-
         self._forward_propagation(X, n_samples)
 
         return self
