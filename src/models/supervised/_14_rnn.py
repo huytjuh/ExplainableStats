@@ -30,9 +30,9 @@ class RNN:
         self._initialize_weights(n_features)
         list_loss = [np.inf]
         y_pred = self._forward_propagation(X, n_samples, timesteps)
+        
+        self._backward_propagation(X, y, y_pred, timesteps)
 
-
-        print(y_pred)
         return self
     
     def predict(self, X: pd.DataFrame) -> np.ndarray:
@@ -69,9 +69,34 @@ class RNN:
 
         return self.cache['A_out']
 
-    def _backward_propagation(self, X: np.ndarray, y: np.ndarray, y_pred: np.ndarray) -> None:
+    def _backward_propagation(self, X: np.ndarray, y: np.ndarray, y_pred: np.ndarray, timesteps: int) -> None:
         """Perform backward propagation to update weights and biases."""
- 
+        grad_A_out = -2*(y - y_pred) / len(y)
+        grad_Z_out = grad_A_out * self._activation_derivative(self.cache['Z_out'], method=self.output_activation)
+
+        grad_W_out = self.cache['A_out'].T @ grad_Z_out / len(y)
+        grad_b_out = np.sum(grad_Z_out, axis=0, keepdims=True) / len(y)
+        self.W['W_out'] = self.W['W_out'] - self.lr * grad_W_out
+        self.b['b_out'] = self.b['b_out'] - self.lr * grad_b_out
+
+        grad_A = grad_Z_out @ self.W['W_out'].T / len(y)
+        grad_H = np.zeros_like(grad_A)
+        for t in range(timesteps-1, -1, -1):
+            for i in range(len(self.hidden_layers)-1, -1, -1):
+                grad_Z = (grad_A + grad_H) * self._activation_derivative(self.cache[f'Z_{i+1}'], method=self.hidden_activation)
+
+                grad_W = self.cache[f'A_0'][:, t, :].T @ grad_Z / len(y)
+                grad_Wh = self.cache[f'H_{i}'].T @ grad_Z / len(y)
+                grad_b = np.sum(grad_Z, axis=0, keepdims=True) / len(y)
+
+                self.W[f'W_{i}'] = self.W[f'W_{i}'] - self.lr * grad_W
+                self.Wh[f'Wh_{i}'] = self.Wh[f'Wh_{i}'] - self.lr * grad_Wh
+                self.b[f'b_{i}'] = self.b[f'b_{i}'] - self.lr * grad_b
+
+                grad_A = grad_Z @ self.W[f'W_{i}'].T / len(y)
+                grad_H = grad_Z @ self.Wh[f'Wh_{i}'].T / len(y)
+
+                
         pass
 
     def _activation_func(self, y: np.ndarray, method='relu') -> np.ndarray:

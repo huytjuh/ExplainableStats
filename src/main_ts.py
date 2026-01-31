@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     n_steps = 14
     X_train_seq = create_sequence(X_train, n_steps)
-    y_train_seq = y_train[n_steps-1:]
+    y_train_seq = y_train[n_steps:]
 
     RNN = RNN(learning_rate=0.01, epochs=1000, tol=1e-5)
     RNN_fit = RNN.fit(X_train_seq, y_train_seq)
