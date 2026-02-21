@@ -1,0 +1,27 @@
+[project]
+name = "explainableml"
+version = "0.1.0"
+description = "ExplainableML from scratch"
+authors = [{name = "huy huynh", email = "huytjuh@gmail.com"}]
+dependencies = [
+    "numpy>=2.4.2",
+    "pandas>=3.0.1",
+    "scikit-learn>=1.7.0",
+]
+requires-python = ">=3.12"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+numpy = "^2.4.2"
+pandas = "^3.0.1"
+scikit-learn = "^1.7.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+
+[build-system]
+requires = ["poetry-core>=1.8.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+package-mode = false
