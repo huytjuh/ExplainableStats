@@ -3,6 +3,7 @@ import numpy as np
 
 from sklearn.model_selection import TimeSeriesSplit
 from models.supervised._14_rnn import RNN
+from models.supervised._15_lstm import LSTM
 
 def create_sequence(data, n_steps=10):
     return np.array([data[i:i+n_steps] for i in range(len(data) - n_steps)])
@@ -20,9 +21,13 @@ if __name__ == "__main__":
     X_train_seq = create_sequence(X_train, n_steps)
     y_train_seq = y_train[n_steps:]
 
-    RNN = RNN(learning_rate=0.01, epochs=1000, tol=1e-5)
-    RNN_fit = RNN.fit(X_train_seq, y_train_seq)
+    # RNN = RNN(learning_rate=0.01, epochs=1000, tol=1e-5)
+    # RNN_fit = RNN.fit(X_train_seq, y_train_seq)
 
-    print(RNN_fit)
+    LSTM = LSTM(learning_rate=0.01, epochs=1000, tol=1e-5)
+    LSTM_fit = LSTM.fit(X_train_seq, y_train_seq)
+
+
+    print(LSTM_fit)
 
 

@@ -3,14 +3,14 @@
 	install run clean lint test
 
 # Define the target to install dependencies
-install:
+install:`
 	poetry install --no-root
 	poetry lock
 	poetry env activate
 
 # Define the target to run the project
 run:
-	poetry run python main.py
+	poetry run python src/main_ts.py
 
 # Define the target to clean the build directory
 clean:
