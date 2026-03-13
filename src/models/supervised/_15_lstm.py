@@ -45,12 +45,13 @@ class LSTM:
         self.W, self.H, self.b = {}, {}, {}
         prev_layer_size = n_features
         for i in range(len(self.hidden_layers)):
+            self.W[i], self.H[i], self.b[i] = {}, {}, {}
             h_size = self.hidden_layers[i]
             scale_x = np.sqrt(2 / prev_layer_size)
-            for gate in ['f', 'i', 'o', 'g']:
-                self.W[f'W{gate}_{i}'] = np.random.randn(prev_layer_size, h_size) * scale_x
-                self.H[f'H{gate}_{i}'] = np.random.randn(h_size, h_size) * scale_x
-                self.b[f'b{gate}_{i}'] = np.zeros((1, h_size))
+            for gate in ['f', 'i', 'c', 'o']:
+                self.W[i][f'W{gate}'] = np.random.randn(prev_layer_size, h_size) * scale_x
+                self.H[i][f'H{gate}'] = np.random.randn(h_size, h_size) * scale_x
+                self.b[i][f'b{gate}'] = np.zeros((1, h_size))
             
             prev_layer_size = h_size
         
@@ -74,24 +75,23 @@ class LSTM:
                 H_prev = H[i][:, t-1, :] if t>0 else np.zeros((n_samples, self.hidden_layers[i]))
                 
                 # PREACTIVATION GATES
-                Zf = X_t @ self.W[f'Wf_{i}'] + H_prev @ self.H[f'Hf_{i}'] + self.b[f'bf_{i}']
-                Zi = X_t @ self.W[f'Wi_{i}'] + H_prev @ self.H[f'Hi_{i}'] + self.b[f'bi_{i}']
-                Zg = X_t @ self.W[f'Wg_{i}'] + H_prev @ self.H[f'Hg_{i}'] + self.b[f'bg_{i}']
-                Zo = X_t @ self.W[f'Wo_{i}'] + H_prev @ self.H[f'Ho_{i}'] + self.b[f'bo_{i}']
+                Zf = X_t @ self.W[i][f'Wf'] + H_prev @ self.H[i][f'Hf'] + self.b[i][f'bf']
+                Zi = X_t @ self.W[i][f'Wi'] + H_prev @ self.H[i][f'Hi'] + self.b[i][f'bi']
+                Zc = X_t @ self.W[i][f'Wc'] + H_prev @ self.H[i][f'Hc'] + self.b[i][f'bc']
+                Zo = X_t @ self.W[i][f'Wo'] + H_prev @ self.H[i][f'Ho'] + self.b[i][f'bo']
 
                 # ACTIVATION GATES
                 Af = self._sigmoid(Zf)      # FORGET GATE 
                 Ai = self._sigmoid(Zi)      # INPUT GATE 
-                Ag = np.tanh(Zg)            # INPUT GATE
+                Ac = np.tanh(Zc)            # INPUT GATE
                 Ao = self._sigmoid(Zo)      # OUTPUT GATE
 
                 # CELL STATE AND HIDDEN STATE
-                C[i][:, t, :] = C_prev * Af + Ai * Ag
+                C[i][:, t, :] = C_prev * Af + Ai * Ac
                 H[i][:, t, :] = Ao * np.tanh(C[i][:, t, :])
 
-                # CACHE
-                for keys in ['Zf', 'Zi', 'Zg', 'Zo', 'Af', 'Ai', 'Ag', 'Ao', 'C', 'H']:
-                    self.cache[f'{keys}_{i}'] = eval(keys)
+                for key in ['Zf', 'Zi', 'Zc', 'Zo', 'Af', 'Ai', 'Ac', 'Ao']:
+                    self.cache[f'{key}_{i}_{t}'] = eval(key)
 
         # OUTPUT LAYER
         H_out = H[-1][:, -1, :]
@@ -99,7 +99,7 @@ class LSTM:
         A_out = self._sigmoid(Z_out).ravel()
 
         # CACHE
-        for keys in ['Zf', 'Zi', 'Zg', 'Zo', 'Af', 'Ai', 'Ag', 'Ao', 'C', 'H', 'Z_out', 'A_out']:
+        for keys in ['C', 'H', 'Z_out', 'A_out']:
             self.cache[f'{keys}'] = eval(keys)
 
         return A_out
@@ -109,13 +109,19 @@ class LSTM:
         n_samples, timesteps, n_features = X.shape
 
         y_pred = np.clip(y_pred, 1e-9, 1 - 1e-9)
-        dZ_out = y_pred.reshape(-1, 1) - y                                          # BINARY CROSS-ENTROPY LOSS DERIVATIVE
-        dW_out = self.cache['H'][-1][:, -1, :].T @ dZ_out / n_samples               # dL/dW = dL/dZ * dZ/dW_ = H.T @ dZ
-        db_out = np.sum(dZ_out, axis=0, keepdims=True) / n_samples                  # dL/db = dL/dZ * dZ/db = sum(dZ) * 1
-        dH_out = dZ_out @ self.W['W_out'].T / n_samples                             # dL/dH = dL/dZ * dZ/dH = dZ @ W.T
+        dZ_out = y_pred.reshape(-1, 1) - y                                 # BINARY CROSS-ENTROPY LOSS DERIVATIVE
+        dW_out = self.cache['H'][-1][:, -1, :].T @ dZ_out / n_samples      # dL/dW = dL/dZ * dZ/dW_ = H.T @ dZ
+        db_out = np.sum(dZ_out, axis=0, keepdims=True) / n_samples         # dL/db = dL/dZ * dZ/db = sum(dZ) * 1
+        self.W['W_out'] -= self.lr * dW_out
+        self.b['b_out'] -= self.lr * db_out
 
-        dH_next = dH_out
+        dH_out = dZ_out @ self.W['W_out'].T / n_samples                    # dL/dH = dL/dZ * dZ/dH = dZ @ W.T
+        dH_into_layer = dH_out
         for i in range(len(self.hidden_layers)-1, -1, -1):
+            dH_next, dH_into_layer = dH_into_layer, None
+
+            dH_t = np.zeros((n_samples, self.hidden_layers[i]))
+            dC_t = np.zeros((n_samples, self.hidden_layers[i]))
            
             for t in range(timesteps-1, -1, -1):
                 # GET FIRST STEP OF EACH SAMPLE
@@ -126,66 +132,64 @@ class LSTM:
                 H_prev = self.cache['H'][i][:, t-1, :] if t>0 else np.zeros((n_samples, self.hidden_layers[i]))
 
                 # GATE VALUES
-                Af = self.cache['Af'][i][:, t, :]
-                Ai = self.cache['Ai'][:, t, :]  
-                Ag = self.cache['Ag'][:, t, :]
-                Ao = self.cache['Ao'][:, t, :]
-                C = self.cache['C'][i][:, t, :]
+                Af = self.cache[f'Af_{i}_{t}']
+                Ai = self.cache[f'Ai_{i}_{t}']  
+                Ac = self.cache[f'Ac_{i}_{t}']
+                Ao = self.cache[f'Ao_{i}_{t}']
+                C_t_val = self.cache['C'][i][:, t, :]
 
-                dH_total = (dH_next if t == timesteps - 1 else np.zeros_like(dH_t)) + dH_t
+                dH_total = (dH_next if t == timesteps-1 else np.zeros_like(dH_t)) + dH_t
 
                 # ── CELL STATE GRADIENT (two paths) ───────────────────────────────
                 # Path 1: H_t = Ao * tanh(C_t)
                 # Path 2: C_{t+1} = Af_{t+1} * C_t  (carried via dC_t)
-                dC = dH_total * Ao * (1 - np.tanh(C)**2) + dC_t * Af
+                dC = dH_total * Ao * (1 - np.tanh(C_t_val)**2) + dC_t
 
                 # DERIVATIVE OF ACTIVATION GATES
                 dAf = dC * C_prev
-                dAi = dC * Ag
-                dAg = dC * Ai
-                dAo = dH_total * np.tanh(C)
+                dAi = dC * Ac
+                dAc = dC * Ai
+                dAo = dH_total * np.tanh(C_t_val)
 
                 # DERIVATIVE OF PREACTIVATION GATES
                 dZf = dAf * Af * (1 - Af)       # sigmoid'(Zf) = Af * (1 - Af)
                 dZi = dAi * Ai * (1 - Ai)       # sigmoid'(Zi) = Ai * (1 - Ai)
-                dZg = dAg * (1 - Ag**2)         # tanh'(Zg) = 1 - tanh(Zg)^2 = 1 - Ag^2
+                dZc = dAc * (1 - Ac**2)         # tanh'(Zc) = 1 - tanh(Zc)^2 = 1 - Ac^2
                 dZo = dAo * Ao * (1 - Ao)       # sigmoid'(Zo) = Ao * (1 - Ao)
 
                 # GRADIENTS FOR WEIGHTS AND BIASES
                 dWf = X_t.T @ dZf / n_samples
                 dWi = X_t.T @ dZi / n_samples
-                dWg = X_t.T @ dZg / n_samples
+                dWc = X_t.T @ dZc / n_samples
                 dWo = X_t.T @ dZo / n_samples
                 dbf = np.sum(dZf, axis=0, keepdims=True) / n_samples
                 dbi = np.sum(dZi, axis=0, keepdims=True) / n_samples
-                dbg = np.sum(dZg, axis=0, keepdims=True) / n_samples
+                dbc = np.sum(dZc, axis=0, keepdims=True) / n_samples
                 dbo = np.sum(dZo, axis=0, keepdims=True) / n_samples
                 dHf = H_prev.T @ dZf / n_samples
                 dHi = H_prev.T @ dZi / n_samples
-                dHg = H_prev.T @ dZg / n_samples
+                dHc = H_prev.T @ dZc / n_samples
                 dHo = H_prev.T @ dZo / n_samples
 
                 # UPDATE WEIGHTS AND BIASES
-                self.W[f'Wf_{i}'] -= self.lr * dWf
-                self.W[f'Wi_{i}'] -= self.lr * dWi  
-                self.W[f'Wg_{i}'] -= self.lr * dWg
-                self.W[f'Wo_{i}'] -= self.lr * dWo
-                self.b[f'bf_{i}'] -= self.lr * dbf
-                self.b[f'bi_{i}'] -= self.lr * dbi
-                self.b[f'bg_{i}'] -= self.lr * dbg
-                self.b[f'bo_{i}'] -= self.lr * dbo
-                self.H[f'Hf_{i}'] -= self.lr * dHf
-                self.H[f'Hi_{i}'] -= self.lr * dHi
-                self.H[f'Hg_{i}'] -= self.lr * dHg
-                self.H[f'Ho_{i}'] -= self.lr * dHo
+                self.W[i][f'Wf'] -= self.lr * dWf
+                self.W[i][f'Wi'] -= self.lr * dWi  
+                self.W[i][f'Wc'] -= self.lr * dWc
+                self.W[i][f'Wo'] -= self.lr * dWo
+                self.b[i][f'bf'] -= self.lr * dbf
+                self.b[i][f'bi'] -= self.lr * dbi
+                self.b[i][f'bc'] -= self.lr * dbc
+                self.b[i][f'bo'] -= self.lr * dbo
+                self.H[i][f'Hf'] -= self.lr * dHf
+                self.H[i][f'Hi'] -= self.lr * dHi
+                self.H[i][f'Hc'] -= self.lr * dHc
+                self.H[i][f'Ho'] -= self.lr * dHo
 
                 # GRADIENT FOR PREVIOUS HIDDEN STATE (carried to next time step)
-                dH_t = dZf @ self.H[f'Hf_{i}'].T + dZi @ self.H[f'Hi_{i}'].T + dZg @ self.H[f'Hg_{i}'].T + dZo @ self.H[f'Ho_{i}'].T
+                dH_t = dZf @ self.H[i][f'Hf'].T + dZi @ self.H[i][f'Hi'].T + dZc @ self.H[i][f'Hc'].T + dZo @ self.H[i][f'Ho'].T
                 dC_t = dC * Af 
 
-                dH_next = dH_t
-
-        return
+                dH_into_layer = dZf @ self.W[i][f'Wf'].T + dZi @ self.W[i][f'Wi'].T + dZc @ self.W[i][f'Wc'].T + dZo @ self.W[i][f'Wo'].T
 
     def _sigmoid(self, x: np.ndarray) -> np.ndarray:
         """Sigmoid activation function."""
