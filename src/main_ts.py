@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np 
 
 from sklearn.model_selection import TimeSeriesSplit
-from models.supervised._14_rnn import RNN
-from models.supervised._15_lstm import LSTM
+from models.timeseries._10_rnn import RNN
+from models.timeseries._12_lstm import LSTM
 
 def create_sequence(data, n_steps=14):
     return np.array([data[i:i+n_steps] for i in range(len(data) - n_steps)])

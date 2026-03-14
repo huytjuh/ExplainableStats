@@ -4,7 +4,7 @@ import numpy as np
 class LSTM:
     """Long Short-Term Memory (LSTM) classifier from scratch."""
 
-    def __init__(self, hidden_layers=[10], learning_rate=0.01, epochs=1000, batch_size=32, tol=1e-5):
+    def __init__(self, hidden_layers=[10], learning_rate=0.01, epochs=1000, batch_size=32, tol=1e-9):
         """Initialize hyperparameters for LSTM."""
         self.hidden_layers = hidden_layers
         self.lr = learning_rate 
@@ -27,12 +27,30 @@ class LSTM:
         self._initialize_weights(n_features)
         list_loss = [np.inf]
 
-        y_pred = self._forward_propagation(X)
-        self._backward_propagation(X, y, y_pred)
+        for epoch in range(self.epochs):
+            idx = np.random.permutation(n_samples)
+            X_shuffled, y_shuffled = X[idx], y[idx]
 
-        # y_pred = self._forward_propagation(X, n_samples, timesteps)
-        
-        # self._backward_propagation(X, y, y_pred, timesteps)
+            loss_epoch = 0
+            for batch in range(0, n_samples, self.batch_size):
+                X_batch = X_shuffled[batch:batch+self.batch_size]
+                y_batch = y_shuffled[batch:batch+self.batch_size]
+
+                y_pred = self._forward_propagation(X_batch)
+                self._backward_propagation(X_batch, y_batch, y_pred)
+
+                y_pred_clipped = np.clip(y_pred, 1e-9, 1 - 1e-9)
+                loss = -np.mean(y_batch * np.log(y_pred_clipped) + (1 - y_batch) * np.log(1 - y_pred_clipped)) # BCE LOSS
+                loss_epoch += loss * len(X_batch)
+
+            loss_epoch = loss_epoch / n_samples
+            list_loss.append(loss_epoch)
+            if np.abs(list_loss[-1] - list_loss[-2]) < self.tol:
+                print(f'Early stopping at epoch {epoch} | Loss: {loss_epoch:.6f}')
+                break
+                
+            if epoch % 100 == 0:
+                print(f'Epoch {epoch:>5} | Loss: {loss_epoch:.6f}')
 
         return self
     
