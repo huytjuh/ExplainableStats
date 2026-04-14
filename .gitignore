@@ -4,3 +4,14 @@
 *.egg-info/
 *.ipynb
 *__pycache__
+
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Egg info
+*.egg-info/
+dist/
+build/
