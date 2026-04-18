@@ -9,7 +9,7 @@ from scipy import stats
 class Logit():
     """Logistic Regression Classifier from scratch."""
     
-    def __init__(self, lr: float, max_iter: float, n_iter: int=100, tol: float=1e-4):
+    def __init__(self, lr: float=0.01, n_iter: int=100, tol: float=1e-4):
         """Initialize hyperparameters for the Logistic Regression."""
         self.lr = lr
         self.n_iter = n_iter
@@ -68,11 +68,20 @@ class Logit():
 
     def calc_coefficients(self, X: pd.DataFrame, y: pd.Series) -> np.ndarray:
         """Calculate coefficients, standard errors, z-scores, p-values, and confidence intervals for the fitted model."""
+        y_pred = self.predict_proba(X)
+        
+        # COEFFICIENTS
         coef = np.concatenate(([self.bias], self.weights))
-        se = np.sqrt(np.diag(np.linalg.inv(X.T @ X)))
+        
+        # STANDARD ERRORS
+        W = np.diag(y_pred * (1 - y_pred))                  # Diagonal matrix of weights
+        I = X.T @ W @ X                                     # Fisher Information Matrix
+        se = np.sqrt(np.diag(np.linalg.inv(I)))             # Standard errors from the inverse of the Fisher Information Matrix
+
+        # Z-SCORES, P-VALUES, AND 95% CONFIDENCE INTERVALS
         z_score = coef / se
         p_value = 2 * (1 - stats.norm.cdf(np.abs(z_score)))
-        ci_95 = [coef - 1.96 * se, coef + 1.96 * se]
+        ci_95 = np.column_stack([coef - 1.96 * se, coef + 1.96 * se])
 
         self.coef_ = {
             'coef': coef,
@@ -86,14 +95,14 @@ class Logit():
 
     def calc_diagnostics(self, X: pd.DataFrame, y: pd.Series, y_pred: np.ndarray) -> Dict[str, float]:
         n_samples, n_features = X.shape
-        LogL0 = self._log_likelihood(y, np.full_like(y, y.mean())
+        LogL0 = self._log_likelihood(y, np.full(n_samples, np.mean(y))) 
         LogL1 = self._log_likelihood(y, y_pred)
 
         self.diagnostics = {
             'log_likelihood': LogL1,
-            'aic': 2 * n_features - 2 * LogL1,
-            'bic': n_features * np.log(n_samples) - 2 * LogL1,
-            'llr': LogL1 - LogL0,
+            'aic': 2 * (n_features + 1) - 2 * LogL1,
+            'bic': (n_features + 1) * np.log(n_samples) - 2 * LogL1,
+            'llr': -2 * (LogL1 - LogL0),
             'R2_mcfadden': 1 - LogL1 / LogL0,                               # McFadden's R² and between 0.2 and 0.4 is considered a good fit
             'R2_cox_snell': 1 - np.exp( (2/n_samples) * (LogL0 - LogL1) )   # Cox and Snell's R² and between 0.3 and 0.5 is considered a good fit
         }
