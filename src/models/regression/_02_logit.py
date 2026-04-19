@@ -15,8 +15,8 @@ class Logit():
         self.n_iter = n_iter
         self.tol = tol
 
-        self.weights: Optional[np.ndarray] = None
-        self.bias: Optional[float] = None
+        self.W: Optional[np.ndarray] = None
+        self.b: Optional[float] = None
 
         self.coef_: Optional[Dict[str, np.ndarray]] = None
         self.diagnostics: Optional[Dict[str, float]] = None
@@ -27,19 +27,19 @@ class Logit():
         y = y.values if isinstance(y, pd.Series) else y
         n_samples, n_features = X.shape
 
-        self.weights = np.zeros(n_features)
-        self.bias = 0
+        self.W = np.zeros(n_features)
+        self.b = 0
         list_loss = [np.inf]
         for _ in range(self.n_iter):
-            log_odds = X @ self.weights + self.bias
+            log_odds = X @ self.W + self.b
             y_pred = self._sigmoid(log_odds)
             resid = y_pred - y
 
             # GRADIENT DESCENT
-            dw = (1/n_samples) * X.T @ resid
+            dW = (1/n_samples) * X.T @ resid
             db = (1/n_samples) * np.sum(resid)
-            self.weights = self.weights - self.lr * dw
-            self.bias = self.bias - self.lr * db
+            self.W = self.W - self.lr * dW
+            self.b = self.b - self.lr * db
 
             # CROSS-ENTROPY LOSS (= MLE)
             y_pred_c = np.clip(y_pred, eps, 1 - eps)
@@ -49,7 +49,7 @@ class Logit():
             if abs(list_loss[-2] - list_loss[-1]) < self.tol:
                 break
 
-        log_odds = X @ self.weights + self.bias
+        log_odds = X @ self.W + self.b
         y_pred = self._sigmoid(log_odds)
 
         self.coeff_ = self.calc_coefficients(X, y)
@@ -59,7 +59,7 @@ class Logit():
 
     def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
         """Predict probabilities for the input data."""
-        log_odds = X @ self.weights + self.bias
+        log_odds = X @ self.W + self.b
         return self._sigmoid(log_odds)
 
     def predict(self, X: pd.DataFrame, threshold: float=0.5) -> np.ndarray:
@@ -71,7 +71,7 @@ class Logit():
         y_pred = self.predict_proba(X)
         
         # COEFFICIENTS
-        coef = np.concatenate(([self.bias], self.weights))
+        coef = np.concatenate(([self.b], self.W))
         
         # STANDARD ERRORS
         W = np.diag(y_pred * (1 - y_pred))                  # Diagonal matrix of weights
@@ -113,7 +113,7 @@ class Logit():
     @property   
     def coeff_(self) -> Optional[np.ndarray]:
         """Return the coefficients of the fitted model."""
-        return [self.bias] + self.weights
+        return [self.b] + self.W
 
     @property
     def aic(self) -> Optional[float]:
