@@ -15,11 +15,11 @@ class Logit():
         self.n_iter = n_iter
         self.tol = tol
 
-        self.weights = None
-        self.bias = None
+        self.weights: Optional[np.ndarray] = None
+        self.bias: Optional[float] = None
 
-        self.coef_ = None
-        self.diagnostics = None
+        self.coef_: Optional[Dict[str, np.ndarray]] = None
+        self.diagnostics: Optional[Dict[str, float]] = None
 
     def fit(self, X: pd.DataFrame, y: pd.Series, eps: float=1e-15) -> 'Logit':
         """Fit the Logistic Regression model to the training data."""
@@ -143,5 +143,5 @@ class Logit():
     @staticmethod
     def _log_likelihood(y: np.ndarray, p: np.ndarray, eps=1e-15) -> float:
         """Calculate log-likelihood for the given data and model parameters."""
-        p = np.clip(p, eps, 1 - eps)  # Avoid log(0)
+        p = np.clip(p, eps, 1 - eps)
         return np.sum(y * np.log(p) + (1 - y) * np.log(1 - p))
