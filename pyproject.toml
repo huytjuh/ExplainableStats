@@ -1,7 +1,7 @@
 [project]
-name = "explainableml"
+name = "explainablestats"
 version = "0.1.0"
-description = "ExplainableML from scratch"
+description = "ExplainableStats from scratch"
 authors = [{name = "huy huynh", email = "huytjuh@gmail.com"}]
 dependencies = [
     "numpy>=2.4.2",
@@ -15,7 +15,7 @@ python = "^3.12"
 numpy = "^2.4.2"
 pandas = "^3.0.1"
 scikit-learn = "^1.7.0"
-scipy >="*"
+scipy = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3"
