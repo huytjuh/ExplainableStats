@@ -7,8 +7,15 @@ from scipy.stats import multinomial, norm
 
 from ._10_fm import FiniteMixtureRegression
 
+class MultinomialComponent:
+    """Component of Finite Mixture of Multinomial Regressions."""
+    def __init__(self, n_classes: int, rng: int=42):
+        self.rng = np.random.default_rng(rng)
+        self.theta = self.rng.dirichlet(alpha=np.ones(n_classes))
+
 class FiniteMixtureMultinomialRegression(FiniteMixtureRegression):
     """Multinomial Finite Mixture of Multinomial Regressions using EM."""
+
     def _initialize_weights(self, X: pd.DataFrame, Y: pd.Series) -> None:
         """Initialize Multinomial Finite Mixture Model"""
         self.n_samples, self.n_classes = Y.shape

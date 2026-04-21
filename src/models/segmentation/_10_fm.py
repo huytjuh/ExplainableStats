@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 
 class FiniteMixtureRegression(ABC):
     """Abstract Base class for Finite Mixture Regression using EM."""
+    
     def __init__(self, n_components=3, max_iter: int=100, tol: float=1e-6):
         """Initialize LatentClass"""
         self.n_components = n_components
@@ -34,6 +35,7 @@ class FiniteMixtureRegression(ABC):
                 break
 
         self.summary = self.summary(X, y)
+        self.diagnostics = self.diagnostics(X, y)
 
         return self
 
@@ -48,7 +50,6 @@ class FiniteMixtureRegression(ABC):
 
     @abstractmethod
     def _e_step(self, X: pd.DataFrame, y: pd.Series) -> np.ndarray:
-        
         pass
 
     @abstractmethod
