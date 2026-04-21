@@ -5,10 +5,10 @@ from typing import Dict
 from scipy.special import logsumexp
 from scipy.stats import multinomial, norm
 
-from ._10_fmm import FiniteMixtureModel
+from ._10_fm import FiniteMixtureRegression
 
-class MultinomialFiniteMixtureModel(FiniteMixtureModel):
-    """Multinomial Finite Mixture Model using EM."""
+class FiniteMixtureMultinomialRegression(FiniteMixtureRegression):
+    """Multinomial Finite Mixture of Multinomial Regressions using EM."""
     def _initialize_weights(self, X: pd.DataFrame, Y: pd.Series) -> None:
         """Initialize Multinomial Finite Mixture Model"""
         self.n_samples, self.n_classes = Y.shape
@@ -16,7 +16,7 @@ class MultinomialFiniteMixtureModel(FiniteMixtureModel):
         self.theta_ = np.random.dirichlet(alpha=np.ones(self.n_classes), size=self.n_components)
 
     def _e_step(self, X: pd.DataFrame, Y: pd.Series) -> np.ndarray:
-        """Expectation step for Multinomial Finite Mixture Model"""
+        """Expectation step for Finite Mixture of Multinomial Regressions"""
         resp = np.zeros((self.n_samples, self.n_components))
         for k in range(self.n_components):
             resp[:, k] = self.weights_[k] * multinomial.pmf(Y, n=Y.sum(axis=1), p=self.theta_[k])
@@ -24,25 +24,25 @@ class MultinomialFiniteMixtureModel(FiniteMixtureModel):
         return resp
 
     def _m_step(self, X: pd.DataFrame, Y: pd.Series, resp: np.ndarray) -> None:
-        """Maximization step for Multinomial Finite Mixture Model"""
+        """Maximization step for Finite Mixture of Multinomial Regressions"""
         self.weights_ = resp.mean(axis=0)
         Y_weighted = resp.T @ Y
         self.theta_ = Y_weighted / Y_weighted.sum(axis=1, keepdims=True)
 
     def _log_likelihood(self, X: pd.DataFrame, Y: pd.Series) -> float:
-        """Log likelihood of Multinomial Finite Mixture Model"""
+        """Log likelihood of Finite Mixture of Multinomial Regressions"""
         LogL = np.zeros((self.n_samples, self.n_components))
         for k in range(self.n_components):
             LogL[:, k] = np.log(self.weights_[k]) + multinomial.logpmf(Y, n=Y.sum(axis=1), p=self.theta_[k])
         return logsumexp(LogL, axis=1).sum()
     
     def predict_proba(self, X: pd.DataFrame, y: pd.Series) -> np.ndarray:
-        """Predict Multinomial Finite Mixture model"""
+        """Predict Finite Mixture of Multinomial Regressions model"""
         resp = self._e_step(X, y)
         return resp
     
     def summary(self, X: pd.DataFrame, Y: pd.Series, alpha: float=0.05) -> Dict[tuple, Dict[str, float]]:
-        """Summary of Multinomial Finite Mixture Model"""
+        """Summary of Finite Mixture of Multinomial Regressions"""
         X = X.values if isinstance(X, pd.DataFrame) else X
         Y = Y.values if isinstance(Y, pd.Series) else Y
 
@@ -74,7 +74,7 @@ class MultinomialFiniteMixtureModel(FiniteMixtureModel):
         return self.summary
     
     def diagnostics(self, X: pd.DataFrame, Y: pd.Series) -> Dict[str, float]:
-        """Diagnostics of Multinomial Finite Mixture Model"""
+        """Diagnostics of Finite Mixture of Multinomial Regressions"""
         X = X.values if isinstance(X, pd.DataFrame) else X
         Y = Y.values if isinstance(Y, pd.Series) else Y
 
