@@ -7,6 +7,7 @@ dependencies = [
     "numpy>=2.4.2",
     "pandas>=3.0.1",
     "scikit-learn>=1.7.0",
+    "statsmodels (>=0.14.6,<0.15.0)",
 ]
 requires-python = ">=3.12"
 
@@ -25,4 +26,5 @@ requires = ["poetry-core>=1.8.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-package-mode = false
+package-mode = true
+packages = [{include = "models", from = "src"}]

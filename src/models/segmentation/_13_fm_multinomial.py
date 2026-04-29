@@ -42,7 +42,7 @@ class FiniteMixtureMultinomialRegression(FiniteMixtureRegression):
         for k in range(self.n_components):
             LogL[:, k] = np.log(self.weights_[k]) + multinomial.logpmf(Y, n=Y.sum(axis=1), p=self.theta_[k])
         return logsumexp(LogL, axis=1).sum()
-    
+
     def predict_proba(self, X: pd.DataFrame, y: pd.Series) -> np.ndarray:
         """Predict Finite Mixture of Multinomial Regressions model"""
         resp = self._e_step(X, y)

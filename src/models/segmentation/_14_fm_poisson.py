@@ -100,3 +100,23 @@ class FiniteMixturePoissonRegression(FiniteMixtureRegression):
                     'ci_upper': ci_k[feature, 1]
                 }
         return dict_summary
+    
+    @property
+    def odds_ratios(self) -> Dict[tuple, float]:
+        """Odds ratios of Finite Mixture of Poisson Regressions"""
+        dict_odds_ratios = {}
+        for k in range(self.n_components):
+            beta_k = self.components_[k].beta
+            for feature in range(self.n_features):
+                dict_odds_ratios[(k, feature)] = np.exp(beta_k[feature])
+        return dict_odds_ratios
+
+    @property
+    def marginal_effects(self) -> Dict[tuple, float]:
+        """Marginal effects of Finite Mixture of Poisson Regressions"""
+        dict_marginal_effects = {}
+        for k in range(self.n_components):
+            beta_k = self.components_[k].beta
+            for feature in range(self.n_features):
+                dict_marginal_effects[(k, feature)] = np.exp(beta_k[feature]) - 1
+        return dict_marginal_effects
