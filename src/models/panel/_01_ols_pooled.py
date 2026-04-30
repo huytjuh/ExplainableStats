@@ -22,12 +22,14 @@ class PooledOLS():
         y = np.asarray(y)
         n_samples, n_features = X.shape
 
+        # POOLEDOLS
         X = sm.add_constant(X)
         self.beta = np.linalg.solve(X.T @ X, X.T @ y)
         y_pred = X @ self.beta
         resid = y - y_pred
         self.sigma2 = np.sum(resid**2) / (n_samples - n_features)
 
+        # INFERENCE & DIAGNOSTICS
         self._inference(X)
         self._diagnostics(X, y, resid)
 
@@ -45,7 +47,7 @@ class PooledOLS():
 
         coef = self.beta
         var = self.sigma2 * np.linalg.inv(X.T @ X)
-        se = np.sqrt(np.diag(var))
+        se = np.diag(var)**0.5
         t_score = coef / se
         p_value = 2 * (1 - stats.t.cdf(np.abs(t_score), df=n_sample - n_feature))
         t_crit = stats.t.ppf(1 - alpha/2, df=n_sample - n_feature)
@@ -77,6 +79,7 @@ class PooledOLS():
         ssr = np.sum(resid**2)
         sst = np.sum((y - y.mean())**2)
         r2 = 1 - ssr/sst
+        r2_adj = 1 - (1 - r2) * (n_sample - 1) / max(n_sample - n_feature - 1, 1)
 
         f_stat = (sst - ssr) / (n_feature - 1) / (ssr / (n_sample - n_feature))
         f_pval = stats.f.sf(f_stat, dfn=n_feature - 1, dfd=n_sample - n_feature)
@@ -89,6 +92,7 @@ class PooledOLS():
             'aic': aic,
             'bic': bic,
             'r2': r2,
+            'r2_adj': r2_adj,
             'f_stat': f_stat,
             'f_pval': f_pval
         }

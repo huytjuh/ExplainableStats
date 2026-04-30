@@ -16,13 +16,14 @@ if __name__ == "__main__":
         df[f'd_{col}'] = df[col] - df[col].shift(1)
     df = df.dropna().reset_index(drop=True)
 
-    # POOLED OLS
     X = df.loc[:, ['d_own_rate_pct', 'd_ecb_rate_pct', 'd_inflation_pct', 'd_rel_rate_pct']]
     y = df.loc[:, 'd_log_balance_eur']
-    OLS = PooledOLS()
-    OLS_fit = OLS.fit(X, y)
-    OLS_res = OLS_fit.coef_table 
-    print(OLS_res)
+
+    # POOLED OLS
+    # OLS = PooledOLS()
+    # OLS_fit = OLS.fit(X, y)
+    # OLS_res = OLS_fit.coef_table 
+    # print(OLS_res)
 
     # RANDOM EFFECTS
     RE = RandomEffects()
