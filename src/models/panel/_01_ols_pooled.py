@@ -16,14 +16,14 @@ class PooledOLS():
         self.coef_table: Optional[Dict[str, np.ndarray]] = None
         self.diagnostics: Optional[Dict[str, float]] = None
 
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> 'PooledOLS':
+    def fit(self, X: pd.DataFrame, y: pd.Series, constant: bool=True) -> 'PooledOLS':
         """Fit the Pooled OLS model to the training data."""
         X = np.asarray(X)
         y = np.asarray(y)
         n_samples, n_features = X.shape
 
         # POOLEDOLS
-        X = sm.add_constant(X)
+        X = sm.add_constant(X) if constant else X
         self.beta = np.linalg.solve(X.T @ X, X.T @ y)
         y_pred = X @ self.beta
         resid = y - y_pred
@@ -35,10 +35,10 @@ class PooledOLS():
 
         return self
 
-    def predict(self, X: pd.DataFrame) -> np.ndarray:
+    def predict(self, X: pd.DataFrame, constant: bool=True) -> np.ndarray:
         """Predict the target variable using the fitted model."""
         X = np.asarray(X)
-        X = sm.add_constant(X)
+        X = sm.add_constant(X) if constant else X
         return X @ self.beta
     
     def _inference(self, X: np.ndarray, alpha: float=0.05) -> None:

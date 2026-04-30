@@ -19,7 +19,7 @@ class RandomEffects():
 
         self.coef_table: Optional[Dict[str, np.ndarray]] = None
         self.diagnostics: Optional[Dict[str, float]] = None
-
+        
     def fit(self, X: pd.DataFrame, y: pd.Series, entity_col: pd.Series) -> 'RandomEffects':
         """Fit the Random Effects model to the training data."""
         X = np.asarray(X)
@@ -37,7 +37,7 @@ class RandomEffects():
         self.sigma2, self.sigma2_alpha = self._variance_re(X, y, resid_pooled, entity_col)
         
         # GLS TRANSFORMATION BY QUASI-DEMEANING
-        X_tilde, y_tilde = self._transform_gls(X, y, entity_col)
+        X_tilde, y_tilde = self._gls_transform(X, y, entity_col)
 
         # OLS ON TRANSFORMED DATA
         GLS = PooledOLS()
@@ -61,9 +61,9 @@ class RandomEffects():
         entity_idx = np.searchsorted(list_entities, entity_col)
 
         # NUMBER OF OBSERVATIONS PER ENTITY, MEAN RESIDUAL PER ENTITY, AND AVERAGE NUMBER OF OBSERVATIONS PER ENTITY
-        T_i = np.bincount(entity_idx)
-        e_bar = np.bincount(entity_idx, weights=resid_pooled) / T_i
-        T_bar = n_entities / np.sum(1 / T_i)
+        N_i = np.bincount(entity_idx, minlength=n_entities)
+        e_bar = np.bincount(entity_idx, weights=resid_pooled, minlength=n_entities) / N_i
+        N_bar = n_entities / np.sum(1 / N_i)
 
         if method == 'wallace-hussain':
             resid_dm = resid_pooled - e_bar[entity_idx]         # DE-MEAN RESIDUALS OF POOLED OLS BY ENTITY
@@ -73,25 +73,25 @@ class RandomEffects():
             sigma2 = SSW / max(n_samples - n_features - n_entities, 1)
 
             # BETWEEN SUM SQUARE RESIDUALS
-            SSB = np.sum(T_i * e_bar**2)                                   
+            SSB = np.sum(N_i * e_bar**2)                                   
             sigma2_b = SSB / max(n_entities - n_features - 1, 1)
-            sigma2_alpha = max(sigma2_b - sigma2/T_bar, 0)
+            sigma2_alpha = max(sigma2_b - sigma2/N_bar, 0)
 
             return sigma2, sigma2_alpha
 
-    def _transform_gls(self, X: np.ndarray, y: np.ndarray, entity_col: np.ndarray, eps: float=1e-6) -> Tuple[np.ndarray, np.ndarray]:
+    def _gls_transform(self, X: np.ndarray, y: np.ndarray, entity_col: np.ndarray, eps: float=1e-6) -> Tuple[np.ndarray, np.ndarray]:
         """Transform the GLS model to the Random Effects model."""
         n_samples, n_features = X.shape
         list_entities = np.unique(entity_col)
         n_entities = len(list_entities)
         entity_idx = np.searchsorted(list_entities, entity_col)
 
-        T_i = np.bincount(entity_idx, minlength=n_entities)
-        theta = 1 - (self.sigma2 / (self.sigma2 + T_i * self.sigma2_alpha + eps))**0.5
+        N_i = np.bincount(entity_idx, minlength=n_entities)
+        theta = 1 - (self.sigma2 / (self.sigma2 + N_i * self.sigma2_alpha + eps))**0.5
         self.theta = theta[entity_idx]
 
-        X_bar = np.column_stack([np.bincount(entity_idx, weights=X[:, col], minlength=n_entities) for col in range(n_features)]) / T_i[:, None]
-        y_bar = np.bincount(entity_idx, weights=y, minlength=n_entities) / T_i
+        X_bar = np.column_stack([np.bincount(entity_idx, weights=X[:, col], minlength=n_entities) for col in range(n_features)]) / N_i[:, None]
+        y_bar = np.bincount(entity_idx, weights=y, minlength=n_entities) / N_i
         X_tilde = X - self.theta[:, None] * X_bar[entity_idx]
         y_tilde = y - self.theta * y_bar[entity_idx]
 
@@ -108,6 +108,7 @@ class RandomEffects():
     def _inference(self, X: np.ndarray, alpha: float=0.05) -> None:
         """Calculate inference statistics for the fitted model."""
         n_samples, n_features = X.shape
+        
         coef = self.beta
         var = self.sigma2 * np.linalg.inv(X.T @ X)
         se = np.diag(var)**0.5

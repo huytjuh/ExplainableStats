@@ -4,6 +4,7 @@ from typing import List
 
 from models.panel._01_ols_pooled import PooledOLS
 from models.panel._02_re import RandomEffects
+from models.panel._03_fe import FixedEffects
 
 if __name__ == "__main__":
     data = pd.read_csv(r'data/transactions.csv')
@@ -26,12 +27,16 @@ if __name__ == "__main__":
     # print(OLS_res)
 
     # RANDOM EFFECTS
-    RE = RandomEffects()
-    RE_fit = RE.fit(X, y, df['customer_id'])
-    RE_res = RE_fit.coef_table
-    print(RE_res)
+    # RE = RandomEffects()
+    # RE_fit = RE.fit(X, y, df['customer_id'])
+    # RE_res = RE_fit.coef_table
+    # print(RE_res)
 
     # FIXED EFFECTS
+    FE = FixedEffects()
+    FE_fit = FE.fit(X, y, df['customer_id'])
+    FE_res = FE_fit.coef_table
+    print(FE_res)
 
     # PANELOLS: TWO-WAY ENTITY FE + TIME FE
 

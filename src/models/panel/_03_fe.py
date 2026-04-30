@@ -1,163 +1,137 @@
 import pandas as pd
-import numpy as np 
-from typing import Optional
+import numpy as np
+from typing import Optional, Dict, Tuple
 
-from utils import gini_index, weighted_gini_index, similarity_score, coverage_score
+import statsmodels.api as sm
+from scipy import stats
 
-class DecisionTree:
-    """A simple Decision Tree classifier from scratch."""
+from models.panel._01_ols_pooled import PooledOLS
 
-    def __init__(self, max_depth: int=5, min_samples_split: int=2, min_samples_leaf: int=1, gamma: float=0.0, lmbda: float=1.0, min_child_weight: int=1):
-        """Initialize hyperparameters for the Decision Tree."""
-        self.max_depth = max_depth
-        self.min_samples_split = min_samples_split
-        self.min_samples_leaf = min_samples_leaf
-        self.gamma = gamma
+class FixedEffects():
+    """Fixed Effects model for panel data from scratch"""
 
-        # XGBOOST HYPERPARAMETERS
-        self.lmbda = lmbda
-        self.min_child_weight = min_child_weight
+    def __init__(self) -> None:
+        """Initialize hyperparameters for the Fixed Effects."""
+        self.beta = None 
+        self.alpha = None
+        self.sigma2 = None
 
-        self.tree = None
-        self.sample_weights = None
-        self.split_criterion = None
+        self.coef_table: Optional[Dict[str, np.ndarray]] = None
+        self.diagnostics: Optional[Dict[str, float]] = None
 
-    def fit(self, X: pd.DataFrame, y: pd.Series, split_criterion: str='gini', sample_weights: Optional[np.ndarray]=None) -> 'DecisionTree':
-        """Train the Decision Tree classifier."""
-        if split_criterion == 'gini':
-            self.split_criterion = split_criterion
-        elif split_criterion == 'weighted_gini' and sample_weights is not None:
-            self.split_criterion = split_criterion
-            self.sample_weights = sample_weights
-        elif split_criterion == 'gain':
-            self.split_criterion = split_criterion
+    def fit(self, X: pd.DataFrame, y: pd.Series, entity_col: pd.Series) -> 'FixedEffects':
+        """Fit the Fixed Effects model to the training data."""
+        X = np.asarray(X)
+        y = np.asarray(y)
+        entity_col = np.asarray(entity_col)
 
-        self.tree = self.build_tree(X, y)
+        n_samples, n_features = X.shape
+        list_entitites = np.unique(entity_col)
+        n_entities = len(list_entitites)
+
+        # WITHIN ESTIMATOR TO SUBTRACT TIME-INVARIANT UNOBSERVED HETEROGENEITY (= CUSTOMER BIAS: WEALTH, RISK APPETITE, ETC.)
+        X_dm, y_dm, X_bar, y_bar = self._within_transform(X, y, entity_col)
+
+        # OLS ON DEMEANED DATA 
+        OLS = PooledOLS()
+        OLS_fit = OLS.fit(X_dm, y_dm, constant=False)
+        self.beta = OLS_fit.beta
+        y_pred_dm = OLS_fit.predict(X_dm, constant=False)
+        resid_dm = y_dm - y_pred_dm
+
+        # VARIANCE OF FIXED EFFECTS
+        self.sigma2 = np.sum(resid_dm**2) / max(n_samples - n_entities - n_features, 1)
+
+        # ENTITY INTERCEPT
+        self.alpha = y_bar - X_bar @ self.beta
+
+        # INFERENCE & DIAGNOSTICS
+        self._inference(X_dm, entity_col)
+        self._diagnostics(X_dm, y_dm, resid_dm, entity_col)
+
         return self
 
-    def find_best_split_criterion(self, X: pd.DataFrame, y: pd.Series, eps: int=1e-4) -> dict:
-        """Find the best feature and threshold to split the data."""
-        # LIST OF ALL UNIQUE THRESHOLDS FOR EACH FEATURE
-        list_df = [pd.DataFrame({'feature': col, 'threshold': X[col].unique().tolist()}) for col in X.columns]
-        df = pd.concat(list_df, ignore_index=True).sort_values(['feature', 'threshold']).reset_index(drop=True)
+    def _within_transform(self, X: np.ndarray, y: np.ndarray, entity_col: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Within transformation to remove time-invariant unobserved heterogeneity."""
+        n_samples, n_features = X.shape
+        list_entities = np.unique(entity_col)
+        n_entities = len(list_entities)
+        entity_idx = np.searchsorted(list_entities, entity_col)
 
-        # DETERMINE IF THRESHOLDS ARE NUMERIC OR CATEGORICAL
-        df['numeric_flg'] = pd.to_numeric(df['threshold'], errors='coerce').notna().astype(int)
-        df.loc[df['numeric_flg'] == 1, 'threshold'] = df.loc[df['numeric_flg'] == 1, :].groupby('feature').rolling(window=2).mean()['threshold'].values
-        df = df.dropna().reset_index(drop=True)
-
-        # OBTAIN PREDICTIONS FOR LEFT AND RIGHT NODES
-        for feature in df['feature'].unique():
-            df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 1), 'pred_left'] = df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 1), 'threshold'].apply(lambda x: y[X[X[feature] <= x].index].tolist())
-            df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 1), 'pred_right'] = df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 1), 'threshold'].apply(lambda x: y[X[X[feature] > x].index].tolist())
-            
-            df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 0), 'pred_left'] = df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 0), 'threshold'].apply(lambda x: y[X[X[feature] == x].index].tolist())
-            df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 0), 'pred_right'] = df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 0), 'threshold'].apply(lambda x: y[X[X[feature] != x].index].tolist())
-
-        # OBTAIN MIN SAMPLES SPLITS
-        df['N_left'], df['N_right'] = df['pred_left'].str.len(), df['pred_right'].str.len()
-        df['min_samples_split_flg'] = (df['N_left'] + df['N_right'] >= self.min_samples_split).astype(int)
-        df['min_samples_leaf_flg'] = ((df['N_left'] >= self.min_samples_leaf) & (df['N_right'] >= self.min_samples_leaf)).astype(int)
-
-        # CALCULATE GINI INDEX FOR EACH CANDIDATE SPLIT
-        if self.split_criterion == 'gini':
-            df['gini_left'], df['gini_right'] = df['pred_left'].apply(lambda x: gini_index(x)), df['pred_right'].apply(lambda x: gini_index(x))
-            df['gini_index'] = (df['N_left']*df['gini_left'] + df['N_right']*df['gini_right']) / (df['N_left'] + df['N_right'])
-            df['gain'] = np.where(df['min_samples_split_flg'] + df['min_samples_leaf_flg'] == 2, gini_index(y) - df['gini_index'], np.nan)
-        
-        # ADABOOST: CALCULATE WEIGHTED GINI INDEX FOR EACH CANDIDATE SPLIT 
-        if self.split_criterion == 'weighted_gini':
-            X, y = X.reset_index(drop=True), y.reset_index(drop=True)
-            for feature in df['feature'].unique():
-                df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 1), 'idx_left'] = df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 1), 'threshold'].apply(lambda x: X[X[feature] <= x].index.tolist())
-                df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 1), 'idx_right'] = df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 1), 'threshold'].apply(lambda x: X[X[feature] > x].index.tolist())
-                
-                df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 0), 'idx_left'] = df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 0), 'threshold'].apply(lambda x: X[X[feature] == x].index.tolist())
-                df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 0), 'idx_right'] = df.loc[(df['feature'] == feature) & (df['numeric_flg'] == 0), 'threshold'].apply(lambda x: X[X[feature] != x].index.tolist())
-
-            df['W_left'], df['W_right'] = df['idx_left'].apply(lambda x: self.sample_weights[x]), df['idx_right'].apply(lambda x: self.sample_weights[x])
-            df['W_left_total'], df['W_right_total'] = df['W_left'].apply(lambda x: np.sum(x)), df['W_right'].apply(lambda x: np.sum(x))
-            df['gini_left'], df['gini_right'] = df.apply(lambda x: weighted_gini_index(x['pred_left'], x['W_left']), axis=1), df.apply(lambda x: weighted_gini_index(x['pred_right'], x['W_right']), axis=1)
-            df['gini_index'] = (df['W_left_total']*df['gini_left'] + df['W_right_total']*df['gini_right']) / (df['W_left_total'] + df['W_right_total'])
-            df['gain'] = np.where(df['min_samples_split_flg'] + df['min_samples_leaf_flg'] == 2, weighted_gini_index(y, self.sample_weights) - df['gini_index'], np.nan)
-        
-        # XGBOOST: CALCULATE GAIN FOR EACH CANDIDATE SPLIT
-        if self.split_criterion == 'gain':
-            df['sim_parent'] = similarity_score(y.tolist(), self.lmbda) 
-            df['sim_left'], df['sim_right'] = df['pred_left'].apply(lambda x: similarity_score(x, self.lmbda)), df['pred_right'].apply(lambda x: similarity_score(x, self.lmbda))
-            df['cov_left'], df['cov_right'] = df['pred_left'].str.len(), df['pred_right'].str.len()
-            df['min_child_weight'] = ((df['cov_left'] >= self.min_child_weight) & (df['cov_right'] >= self.min_child_weight)).astype(int)
-            df['gain'] = np.where(df['min_samples_split_flg'] + df['min_samples_leaf_flg'] + df['min_child_weight'] == 3, df['sim_left'] + df['sim_right'] - df['sim_parent'] - self.gamma, np.nan)
-        
-        # IF REGRESSION, CALCULATE MSE FOR EACH CANDIDATE SPLIT
-        # TO BE IMPLEMENTED LATER
-        
-        if pd.isna(df['gain'].max()) or df['gain'].max() < eps:
-            return None
-        best_split_criterion = df.loc[df['gain'].idxmax()]
-
-        return best_split_criterion[['feature', 'threshold', 'numeric_flg', 'gain']].to_dict()
     
-    def create_leaf_node(self, y: pd.Series) -> np.ndarray:
-        """Create a leaf node by majority class for classification and average for regression."""
-        if self.split_criterion == 'gain':
-            return float(y.mean())
-        return y.mode()[0]
+        N_i = np.bincount(entity_idx, minlength=n_entities)
+        X_bar = np.column_stack([np.bincount(entity_idx, weights=X[:, col], minlength=n_entities) for col in range(n_features)]) / N_i[:, None]
+        y_bar = np.bincount(entity_idx, weights=y, minlength=n_entities) / N_i
 
-    def build_tree(self, X: pd.DataFrame, y: pd.Series, depth: int=0) -> dict:
-        """Recursively build the decision tree."""
+        X_dm = X - X_bar[entity_idx]
+        y_dm = y - y_bar[entity_idx]
 
-        # STOPPING CRITERIA
-        if depth >= self.max_depth or len(y) < self.min_samples_split or len(y.unique()) == 1:
-            return self.create_leaf_node(y)
+        return X_dm, y_dm, X_bar, y_bar
+
+    def predict(self, X: pd.DataFrame, entity_col: pd.Series) -> np.ndarray:
+        """Predict using the Fixed Effects model."""
+        X = np.asarray(X)
+        entity_col = np.asarray(entity_col)
+        list_entities = np.unique(entity_col)
+        entity_idx = np.searchsorted(list_entities, entity_col)
+        return self.alpha[entity_idx] + X @ self.beta
+
+    def _inference(self, X: np.ndarray, entity_col: np.ndarray, alpha: float=0.05) -> None:
+        """Calculate inference statistics for the fitted model."""
+        n_samples, n_features = X.shape
+        list_entities = np.unique(entity_col)
+        n_entities = len(list_entities)
+
+        coef = self.beta
+        var = self.sigma2 * np.linalg.inv(X.T @ X)
+        se = np.diag(var)**0.5
+        t_score = coef / se
+        p_value = 2 * (1 - stats.t.cdf(np.abs(t_score), df=max(n_samples - n_entities - n_features, 1)))
+        t_crit = stats.t.ppf(1 - alpha/2, df=max(n_samples - n_entities - n_features, 1))
+        ci_95 = np.column_stack([coef - t_crit*se, coef + t_crit*se])
+
+        self.coef_table = {
+            'coef': coef,
+            'se': se,
+            't_score': t_score,
+            'p_value': p_value,
+            'ci_95': ci_95
+        }
+
+    def _diagnostics(self, X: np.ndarray, y: np.ndarray, resid: np.ndarray, entity_col: np.ndarray) -> None:
+        """Calculate diagnostics for the fitted model."""
+        n_samples, n_features = X.shape 
+        list_entities = np.unique(entity_col)
+        n_entities = len(list_entities)
+
+        resid0 = y - y.mean()
+        sigma20 = np.sum(resid0**2) / (n_samples - 1)
+        logL0 = -0.5 * (n_samples * np.log(2 * np.pi * sigma20)) - 0.5 * np.sum(resid0**2) / sigma20
+
+        logL1 = -0.5 * (n_samples * np.log(2 * np.pi * self.sigma2)) - 0.5 * np.sum(resid**2) / self.sigma2
         
-        # FIND BEST SPLIT CRITERION
-        split_criterion = self.find_best_split_criterion(X, y)
-        if split_criterion is None:
-            return self.create_leaf_node(y)
-        
-        # SPLIT DATA AND RECURSIVELY BUILD LEFT AND RIGHT SUBTREES
-        feature, threshold, numeric_flg, score = split_criterion.values()
-        if numeric_flg == 1:
-            idx_left, idx_right = X[feature] <= threshold, X[feature] > threshold
-        else:
-            idx_left, idx_right = X[feature] == threshold, X[feature] != threshold
-        left_split = self.build_tree(X[idx_left], y[idx_left], depth + 1)
-        right_split = self.build_tree(X[idx_right], y[idx_right], depth + 1)
+        llr_stat = 2 * (logL1 - logL0)
+        llr_pval = stats.chi2.sf(llr_stat, df=n_features)
+        aic = 2 * (n_features + n_entities) - 2 * logL1
+        bic = (n_features + n_entities) * np.log(n_samples) - 2 * logL1
 
-        # CREATE AND RETURN TREE NODE
-        tree = {f'feature': feature, 
-                'threshold': threshold, 
-                '{self.split_criterion}': score,
-                'left_split': left_split, 
-                'right_split': right_split}
+        ssr = np.sum(resid**2)
+        sst = np.sum((y - y.mean())**2)
+        r2 = 1 - ssr/sst
+        r2_adj = 1 - (1 - r2) * (n_samples - 1) / max(n_samples - n_features - n_entities, 1)
 
-        return tree
+        f_stat = (sst - ssr) / n_features / (ssr / max(n_samples - n_features - n_entities, 1))
+        f_pval = stats.f.sf(f_stat, dfn=n_features, dfd=max(n_samples - n_features - n_entities, 1))
 
-    def predict(self, X: pd.DataFrame) -> np.ndarray:
-        """Predict class labels for the input data."""
-        X['pred'] = X.apply(lambda x: self.predict_single(x), axis=1)
-        return np.array(X['pred'])
-
-    def predict_single(self, row: pd.Series) -> int:
-        """Predict the class label for a single data point."""
-        current_node = self.tree
-        while isinstance(current_node, dict):
-            feature, threshold = current_node['feature'], current_node['threshold']
-            if isinstance(threshold, (int, float)):
-                current_node = current_node['left_split'] if row[feature] <= threshold else current_node['right_split']
-            else:
-                current_node = current_node['left_split'] if row[feature] == threshold else current_node['right_split']
-
-        return current_node
-    
-    def missing_value_handler(self, X: pd.DataFrame):
-        """Handle missing values in the dataset."""
-        # TO BE IMPLEMENTED LATER
-        pass
-
-    def print_tree(self):
-        """Print the structure of the decision tree."""
-        if not self.tree:
-            raise ValueError("The tree has not been fitted yet.")
-        return self.tree
+        self.diagnostics = {
+            'logL0': logL0,
+            'logL1': logL1,
+            'llr_stat': llr_stat,
+            'llr_pval': llr_pval,
+            'aic': aic,
+            'bic': bic,
+            'r2': r2,
+            'r2_adj': r2_adj,
+            'f_stat': f_stat,
+            'f_pval': f_pval
+        }
