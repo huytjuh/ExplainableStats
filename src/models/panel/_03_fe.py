@@ -49,6 +49,8 @@ class FixedEffects():
         self._inference(X_dm, entity_col)
         self._diagnostics(X_dm, y_dm, resid_dm, entity_col)
 
+        # HAUSMANN TEST: Compare FE vs RE by testing if the entity effects are correlated with the regressors (i.e. if the entity effects are truly random or not)
+
         return self
 
     def _within_transform(self, X: np.ndarray, y: np.ndarray, entity_col: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:

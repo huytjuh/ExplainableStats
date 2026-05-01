@@ -5,6 +5,7 @@ from typing import List
 from models.panel._01_ols_pooled import PooledOLS
 from models.panel._02_re import RandomEffects
 from models.panel._03_fe import FixedEffects
+from models.panel._04_fd import FirstDifference
 
 if __name__ == "__main__":
     data = pd.read_csv(r'data/transactions.csv')
@@ -33,29 +34,29 @@ if __name__ == "__main__":
     # print(RE_res)
 
     # FIXED EFFECTS
-    FE = FixedEffects()
-    FE_fit = FE.fit(X, y, df['customer_id'])
-    FE_res = FE_fit.coef_table
-    print(FE_res)
-
-    # PANELOLS: TWO-WAY ENTITY FE + TIME FE
+    # FE = FixedEffects()
+    # FE_fit = FE.fit(X, y, df['customer_id'])
+    # FE_res = FE_fit.coef_table
+    # print(FE_res)
 
     # FIRST-DIFFERENCE 
+    FD = FirstDifference()
+    FD_fit = FD.fit(X, y, df['customer_id'], df['date'])
+    FD_res = FD_fit.coef_table
+    print(FD_res)
+
+    # LINEAR MIXED EFFECTS 
 
     # ECM
 
-    # WITHIN ESTIMATOR TO SUBTRACT TIME-INVARIANT UNOBSERVED HETEROGENEITY (= CUSTOMER BIAS: WEALTH, RISK APPETITE, ETC.)
-    # def within_transform(df: pd.DataFrame, entity: str, features: List[str], target: str):
-    #     cols = features + [target]
-    #     entity_means = df.groupby(entity)[cols].transform('mean')
-    #     for col in cols:
-    #         df[f'{col}_dm'] = df[col] - entity_means[col]
-    #     return df
+    # HIERARCHICAL BAYES
 
-    # list_features = ['d_own_rate_pct', 'd_ecb_rate_pct', 'd_inflation_pct', 'd_rel_rate_pct']
-    # df = within_transform(df, 'customer_id', list_features, 'd_log_balance_eur')
-    # X = df.loc[:, [f'{col}_dm' for col in list_features]]
-    # y = df['d_log_balance_eur_dm']
+    # GPBOOST
+
+    # DML
+
+
+
 
 
     # PRICING ELASTICITY
