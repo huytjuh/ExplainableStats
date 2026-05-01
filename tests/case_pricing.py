@@ -47,12 +47,13 @@ if __name__ == "__main__":
     # print(FD_res)
 
     # LINEAR MIXED EFFECTS 
-    LME = LinearMixedEffects()
-    LME_fit = LME.fit(X, y, df['customer_id'])
-    LME_res = LME_fit.coef_table
-    print(LME_res)
+    # LME = LinearMixedEffects()
+    # LME_fit = LME.fit(X, y, df['customer_id'])
+    # LME_res = LME_fit.coef_table
+    # print(LME_res)
 
     # ECM
+    
 
     # HIERARCHICAL BAYES
 
