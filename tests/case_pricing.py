@@ -6,6 +6,7 @@ from models.panel._01_ols_pooled import PooledOLS
 from models.panel._02_re import RandomEffects
 from models.panel._03_fe import FixedEffects
 from models.panel._04_fd import FirstDifference
+from models.panel._05_lme import LinearMixedEffects
 
 if __name__ == "__main__":
     data = pd.read_csv(r'data/transactions.csv')
@@ -46,7 +47,10 @@ if __name__ == "__main__":
     # print(FD_res)
 
     # LINEAR MIXED EFFECTS 
-    LME
+    LME = LinearMixedEffects()
+    LME_fit = LME.fit(X, y, df['customer_id'])
+    LME_res = LME_fit.coef_table
+    print(LME_res)
 
     # ECM
 
