@@ -7,6 +7,7 @@ from models.panel._02_re import RandomEffects
 from models.panel._03_fe import FixedEffects
 from models.panel._04_fd import FirstDifference
 from models.panel._05_lme import LinearMixedEffects
+from models.panel._06_ecm import ErrorCorrectionModel
 
 if __name__ == "__main__":
     data = pd.read_csv(r'data/transactions.csv')
@@ -53,7 +54,11 @@ if __name__ == "__main__":
     # print(LME_res)
 
     # ECM
-    
+    ECM = ErrorCorrectionModel()
+    ECM_fit = ECM.fit(X, y, df['customer_id'], df['date'])
+    ECM_res = ECM_fit.coef_table
+    print(ECM_res)
+
 
     # HIERARCHICAL BAYES
 
