@@ -40,12 +40,13 @@ if __name__ == "__main__":
     # print(FE_res)
 
     # FIRST-DIFFERENCE 
-    FD = FirstDifference()
-    FD_fit = FD.fit(X, y, df['customer_id'], df['date'])
-    FD_res = FD_fit.coef_table
-    print(FD_res)
+    # FD = FirstDifference()
+    # FD_fit = FD.fit(X, y, df['customer_id'], df['date'])
+    # FD_res = FD_fit.coef_table
+    # print(FD_res)
 
     # LINEAR MIXED EFFECTS 
+    LME
 
     # ECM
 
