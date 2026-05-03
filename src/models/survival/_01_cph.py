@@ -25,7 +25,7 @@ class CoxProportionalHazards:
         self.coef_table: Optional[Dict[str, np.ndarray]] = None
         self.diagnostics: Optional[Dict[str, float]] = None
 
-    def fit(self, X: pd.DataFrame, y: pd.Series, time: pd.Series, event: pd.Series) -> 'CoxProportionalHazards':
+    def fit(self, X: pd.DataFrame, y_time: pd.Series, y_event: pd.Series) -> 'CoxProportionalHazards':
         """Fit the Cox Proportional Hazards model to the training data."""
         X = np.asarray(X)
         y = np.asarray(X)
@@ -34,11 +34,11 @@ class CoxProportionalHazards:
         n_samples, n_features = X.shape
 
         beta0 = np.zeros(n_features)
-        opt = minimize(self._neg_loglik, x0=beta0, args=(X, time, event), method="BFGS", options={"maxiter": self.max_iter, "ftol": self.tol})
+        opt = minimize(self._neg_loglik, x0=beta0, args=(X, y_time, y_event), method="BFGS", options={"maxiter": self.max_iter, "tol": self.tol})
         self.beta = opt.x
         return self
 
-    def _neg_log_likelihood(self, X: np.ndarray, time: np.ndarray, event: np.ndarray) -> float:
+    def _neg_log_likelihood(self, X: np.ndarray, y_time: np.ndarray, y_event: np.ndarray) -> float:
         """Negative Cox partial log-likelihood using Breslow approximation for ties.
 
         Formula:
@@ -55,9 +55,9 @@ class CoxProportionalHazards:
         eta = X @ self.beta
         exp_eta = np.exp(eta)
         logL = 0
-        for t in np.unique(time[event == 1]):
-            event_idx = (time == t) & (event == 1)
-            risk_idx = (time >= t)
+        for t in np.unique(y_time[y_event == 1]):
+            event_idx = (y_time == t) & (y_event == 1)
+            risk_idx = (y_time >= t)
             d = event_idx.sum() 
 
             logL = logL + eta[event_idx].sum() - d * np.log(exp_eta[risk_idx].sum()) 
