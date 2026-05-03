@@ -8,6 +8,8 @@ from models.panel._03_fe import FixedEffects
 from models.panel._04_fd import FirstDifference
 from models.panel._05_lme import LinearMixedEffects
 from models.panel._06_ecm import ErrorCorrectionModel
+from models.panel._10_hb import HierarchicalBayes
+from models.panel._11_gpboost import GaussianProcessBoost
 
 if __name__ == "__main__":
     data = pd.read_csv(r'data/transactions.csv')
@@ -54,15 +56,22 @@ if __name__ == "__main__":
     # print(LME_res)
 
     # ECM
-    ECM = ErrorCorrectionModel()
-    ECM_fit = ECM.fit(X, y, df['customer_id'], df['date'])
-    ECM_res = ECM_fit.coef_table
-    print(ECM_res)
-
+    # ECM = ErrorCorrectionModel()
+    # ECM_fit = ECM.fit(X, y, df['customer_id'], df['date'])
+    # ECM_res = ECM_fit.coef_table
+    # print(ECM_res)
 
     # HIERARCHICAL BAYES
-
+    # HB = HierarchicalBayes()
+    # HB_fit = HB.fit(X, y, df['customer_id'], df['date'])
+    # HB_res = HB_fit.coef_table
+    # print(HB_res)
+    
     # GPBOOST
+    GPB = GaussianProcessBoost()
+    GPB_fit = GPB.fit(X, y, df['customer_id'], df['d_own_rate_pct'])
+    GPB_res = GPB_fit.coef_table
+    print(GPB_res)
 
     # DML
 

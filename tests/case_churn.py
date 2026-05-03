@@ -1,15 +1,17 @@
-from sklearn.datasets import load_iris
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+import pandas as pd
+import numpy as np
+from typing import List
 
-data  = load_iris()
-X_df  = pd.DataFrame(StandardScaler().fit_transform(data.data), columns=data.feature_names)
-y_s   = pd.Series(data.target)
+if __name__ == "__main__":
+    data = pd.read_csv(r'data/transactions.csv')
 
-X_tr, X_te, y_tr, y_te = train_test_split(X_df, y_s, test_size=0.2,
-                                           random_state=42, stratify=y_s)
+    df = data.copy()
+    df['log_balance_eur'] = np.log1p(df['balance_eur'])  # Add 1 to avoid log(0)
+    df['d_log_balance_eur'] = df['log_balance_eur'] - df['log_balance_eur'].shift(1)
 
-m = Multinomial(lr=0.5, n_iter=3000, tol=1e-8).fit(X_tr, y_tr)
-m.summary(feature_names=data.feature_names.tolist())
-print(f"Test Accuracy: {accuracy_score(y_te, m.predict(X_te)):.4f}")
+    for col in ['own_rate_pct', 'ecb_rate_pct', 'inflation_pct', 'rel_rate_pct']:
+        df[f'd_{col}'] = df[col] - df[col].shift(1)
+    df = df.dropna().reset_index(drop=True)
+
+    X = df.loc[:, ['d_own_rate_pct', 'd_ecb_rate_pct', 'd_inflation_pct', 'd_rel_rate_pct']]
+    y = df.loc[:, 'd_log_balance_eur']

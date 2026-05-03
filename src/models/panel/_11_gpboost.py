@@ -8,7 +8,16 @@ import statsmodels.api as sm
 from sklearn.ensemble import GradientBoostingRegressor
 
 class GaussianProcessBoost:
-    """Gaussian Process Boost for panel data from scratch."""
+    """Gaussian Process Boost for panel data from scratch.
+    
+    Model:
+        y_it = f(x_it) + Z_it @ u_{g(i)} + eps_it
+
+    where:
+        - f(x) is a GradientBoostingRegressor
+        - Z_it = [1, re_it] (intercept + one random-slope covariate)
+        - u_g ~ N(0, sigma2_u I)
+    """
 
     def __init__(self, n_estimators: int=100, learning_rate: float=0.1, max_depth: int=3, min_samples_leaf: int=2, n_outer_iter: int=10, random_state: int=42) -> None:
         """Initialize hyperparameters for the Gaussian Process Boost."""
@@ -29,7 +38,7 @@ class GaussianProcessBoost:
         self.global_bias = None
 
     def fit(self, X: pd.DataFrame, y: pd.Series, groups: pd.Series, re: Optional[pd.Series]) -> 'GaussianProcessBoost':
-        """Fit the Gaussian Process Boost model to the training data."""
+        """Fit the Gaussian Process Boost model to the training data. """
         X = np.asarray(X)
         y = np.asarray(y)
         groups = np.asarray(groups)
@@ -57,8 +66,6 @@ class GaussianProcessBoost:
             GB_fit = self.gb.fit(X, resid_gb)
             f = GB_fit.predict(X)
 
-        
-
         return self
     
     def _update_random_effects(self, resid: np.ndarray, Z: np.ndarray) -> np.ndarray:
@@ -67,15 +74,15 @@ class GaussianProcessBoost:
         n_features_re = Z.shape[1]
 
         I = np.eye(n_features_re)
-        u_group = np.zeros(n_groups)
+        u_group = np.zeros((n_groups, n_features_re))
         for i in range(n_groups):
             Z_i = Z[self.group_idx == i]
             resid_i = resid[self.group_idx == i]
 
             cov_post = Z_i.T @ Z_i / self.sigma2_e + I / self.sigma2_u
             cov_post = np.linalg.inv(cov_post)
-            mean_post = cov_post @ Z_i.T (Z_i.T @ resid_i / self.sigma2_e)
-            u_group[i] = stats.multivariate_normal.rvs(mean=mean_post, cov=cov_post)
+            mean_post = cov_post @ (Z_i.T @ resid_i / self.sigma2_e)
+            u_group[i] = mean_post
 
         return Z @ u_group
         
