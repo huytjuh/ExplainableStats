@@ -52,11 +52,37 @@ class AcceleratedFailureTime:
 
         self.beta = opt.x[:-1]
         self.sigma = opt.x[-1]
-        
+
         return self
     
     def _neg_log_likelihood(self, theta: np.ndarray, X: np.ndarray, y_time: np.ndarray, y_event: np.ndarray) -> float:
-        """Negative log-likelihood for the Accelerated Failure Time model."""
+        """Negative log-likelihood for right-censored Log-Normal AFT model.
+        
+        Model:
+            log(T_i) = x_i'β + σε_i,  where ε_i ~ N(0,1)
+        
+        Likelihood (mixture of PDF for events and survival function for censored):
+            L(β, σ) = ∏_i [f(t_i | x_i)]^δ_i × [S(t_i | x_i)]^(1-δ_i)
+        
+        Where:
+            z_i = (log(t_i) - x_i'β) / σ
+            f(t_i | x_i) = (1 / (t_i × σ)) × φ(z_i)     [log-normal PDF]
+            S(t_i | x_i) = 1 - Φ(z_i)                    [survival function]
+            φ(·) = standard normal PDF
+            Φ(·) = standard normal CDF
+        
+        Log-likelihood:
+            logL(β, σ) = ∑_i δ_i × log f(t_i | x_i) + (1 - δ_i) × log S(t_i | x_i)
+                    = ∑_i δ_i × [-log(t_i) - log(σ) + log φ(z_i)] + (1 - δ_i) × log[1 - Φ(z_i)]
+        
+        Negative log-likelihood:
+            -logL(β, σ) = -∑_i [δ_i × (-log(t_i) - log(σ) + log φ(z_i)) + (1 - δ_i) × log(1 - Φ(z_i))]
+        
+        Parameters:
+        - δ_i = y_event[i] ∈ {0,1}  (1 = event observed, 0 = right-censored)
+        - t_i = y_time[i] > 0       (observed time)
+        - x_i = X[i, :]             (covariate vector)
+        """
         beta = theta[:-1]
         log_sigma = theta[-1]
         sigma = np.exp(log_sigma)
@@ -71,5 +97,13 @@ class AcceleratedFailureTime:
     
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         """Predict using the fitted Accelerated Failure Time model."""
-        return np.exp(X @ self.beta)
+        return X @ self.beta
+
+    def _inference(self, X: np.ndarray, alpha: float=0.05) -> None:
+        """Calculate inference statistics for the fitted Accelerated Failure Time model."""
+        pass 
+
+    def _diagnostics(self, X: np.ndarray, y: np.ndarray, resid: np.ndarray) -> Dict[str, float]:
+        """Calculate diagnostics for the fitted Accelerated Failure Time model."""
+        pass
 

@@ -25,13 +25,13 @@ if __name__ == "__main__":
     X = df.loc[:, ['d_own_rate_pct', 'd_ecb_rate_pct', 'd_inflation_pct', 'd_rel_rate_pct']]
     y = df.loc[:, 'd_log_balance_eur']
 
-    # POOLED OLS
+    # POOLED OLS <- REJECT IF F-TEST < 0.05 OR BP-LM < 0.05
     # OLS = PooledOLS()
     # OLS_fit = OLS.fit(X, y)
     # OLS_res = OLS_fit.coef_table 
     # print(OLS_res)
 
-    # RANDOM EFFECTS
+    # RANDOM EFFECTS <- REJECT IF HAUSMAN TEST < 0.05
     # RE = RandomEffects()
     # RE_fit = RE.fit(X, y, df['customer_id'])
     # RE_res = RE_fit.coef_table
@@ -43,31 +43,25 @@ if __name__ == "__main__":
     # FE_res = FE_fit.coef_table
     # print(FE_res)
 
-    # FIRST-DIFFERENCE 
+    # FIRST-DIFFERENCE <- IF SERIAL CORRELATION DURBIN WATSON P < 0.05
     # FD = FirstDifference()
     # FD_fit = FD.fit(X, y, df['customer_id'], df['date'])
     # FD_res = FD_fit.coef_table
     # print(FD_res)
 
-    # LINEAR MIXED EFFECTS 
+    # LINEAR MIXED EFFECTS <- REJECT IF RE LRT P < 0.05
     # LME = LinearMixedEffects()
     # LME_fit = LME.fit(X, y, df['customer_id'])
     # LME_res = LME_fit.coef_table
     # print(LME_res)
 
-    # ECM
-    # ECM = ErrorCorrectionModel()
-    # ECM_fit = ECM.fit(X, y, df['customer_id'], df['date'])
-    # ECM_res = ECM_fit.coef_table
-    # print(ECM_res)
-
-    # HIERARCHICAL BAYES
+    # HIERARCHICAL BAYES <- IF SPARSE DATA
     # HB = HierarchicalBayes()
     # HB_fit = HB.fit(X, y, df['customer_id'], df['date'])
     # HB_res = HB_fit.coef_table
     # print(HB_res)
     
-    # GPBOOST
+    # GPBOOST <- IF NONLINEAR 
     GPB = GaussianProcessBoost()
     GPB_fit = GPB.fit(X, y, df['customer_id'], df['d_own_rate_pct'])
     GPB_res = GPB_fit.coef_table
@@ -75,6 +69,12 @@ if __name__ == "__main__":
 
     # DML
 
+
+    # ECM <- IF COINTEGRATION (= ENGLE_GRANGER P < 0.05)
+    # ECM = ErrorCorrectionModel()
+    # ECM_fit = ECM.fit(X, y, df['customer_id'], df['date'])
+    # ECM_res = ECM_fit.coef_table
+    # print(ECM_res)
 
 
 
