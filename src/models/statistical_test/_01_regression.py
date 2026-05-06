@@ -26,7 +26,68 @@ class RegressionModelTest():
         """Fit the PanelModelTest to the training data."""
 
         return self
+    
+    def vif(self, X: pd.DaraFrame) -> Dict[str, float]:
+        """Variance Inflation Factor (VIF) = 1 / (1 - R2).
 
+        H0: Features are uncorrelated                                   (= Full features)
+        H1: Features are correlated                                     (= Omit features)
+        
+        Layman's term:
+        Does a given predictor bring unique information, or is it nearly a copy of others?
+        """
+        n_samples, n_features = X.shape
+        vifs = {}
+        for i in range(n_features):
+            y_i = X.iloc[:, i]
+            X_others = X.drop(X.columns[i], axis=1)
+            OLS = sm.OLS(y_i, X_others)
+            OLS_fit = OLS.fit()
+            beta = OLS_fit.params 
+
+            r2 = OLS_fit.rsquared
+            vif = 1 / (1 - r2)
+            vifs[X.columns[i]] = vif
+
+        self.results['vif'] = {
+            'vif': vifs,
+            'conclusion': (
+                "Severe multicollinearity (= OLS coefficients become unstable & hard to interpret) -> Omit features" if max(vifs.values()) > 5
+                else
+                "No severe multicollinearity -> Full features"
+            )
+        }
+
+        return vifs
+    
+    def durbin_wu_hausman_test(self, resid: np.ndarray) -> Tuple[float, float]:
+        """Durbin-Wu-Hausman test for endogeneity. 
+
+        """
+        return
+    
+    def durbin_watson_test(self, resid: np.ndarray) -> Tuple[float, float]:
+        """Durbin-Watson test for autocorrelation. DW statistic = sum((e_t - e_{t-1})^2) / sum(e_t^2)
+
+        H0: p = 0 | No first order autocorrelation                  (= OLS)
+        H1: p ≠ 0 | AR(1) autocorrelation                           (= IV / 2SLS)
+
+        Layman's term:
+        Are today's errors independent of yesterday's, or do they tend to move together?
+        """
+        resid_diff = np.diff(resid)
+
+        DW_stat = np.sum(resid_diff**2) / np.sum(resid**2)
+        DW_pval = stats.chi2.sf(DW_stat, df=1)
+
+        self.results['durbin_watson_test'] = {
+            'stat': DW_stat, 
+            'pval': DW_pval,
+            'Autocorrelation (= Coefficients biased & dubbel counting over time) -> IV / 2SLS' if DW_pval < self.alpha 
+            else 'conclusion': 'No autocorrelation -> IV / 2SLS'
+        }
+
+        return DW_stat, DW_pval
 
     def white_test(self, X: pd.DataFrame, resid: pd.Series) -> Tuple[float, float]:
         """Tests for heteroskedasticity by regressing squared residuals on the predictors, their squares, and cross-products.
@@ -62,62 +123,6 @@ class RegressionModelTest():
         }
         
         return white_stat, white_pval
-    
-    def vif(self, X: pd.DaraFrame) -> Dict[str, float]:
-        """Variance Inflation Factor (VIF) = 1 / (1 - R2).
-
-        H0: Features are uncorrelated                                   (= Full features)
-        H1: Features are correlated                                     (= Omit features)
-        
-        Layman's term:
-        Does a given predictor bring unique information, or is it nearly a copy of others?
-        """
-        n_samples, n_features = X.shape
-        vifs = {}
-        for i in range(n_features):
-            y_i = X.iloc[:, i]
-            X_others = X.drop(X.columns[i], axis=1)
-            OLS = sm.OLS(y_i, X_others)
-            OLS_fit = OLS.fit()
-            beta = OLS_fit.params 
-
-            r2 = OLS_fit.rsquared
-            vif = 1 / (1 - r2)
-            vifs[X.columns[i]] = vif
-
-        self.results['vif'] = {
-            'vif': vifs,
-            'conclusion': (
-                "Severe multicollinearity (= OLS coefficients become unstable & hard to interpret) -> Omit features" if max(vifs.values()) > 5
-                else
-                "No severe multicollinearity -> Full features"
-            )
-        }
-
-        return vifs
-
-    def durbin_watson_test(self, resid: np.ndarray) -> Tuple[float, float]:
-        """Durbin-Watson test for autocorrelation. DW statistic = sum((e_t - e_{t-1})^2) / sum(e_t^2)
-
-        H0: p = 0 | No first order autocorrelation                  (= OLS)
-        H1: p ≠ 0 | AR(1) autocorrelation                           (= IV / 2SLS)
-
-        Layman's term:
-        Are today's errors independent of yesterday's, or do they tend to move together?
-        """
-        resid_diff = np.diff(resid)
-
-        DW_stat = np.sum(resid_diff**2) / np.sum(resid**2)
-        DW_pval = stats.chi2.sf(DW_stat, df=1)
-
-        self.results['durbin_watson_test'] = {
-            'stat': DW_stat, 
-            'pval': DW_pval,
-            'Autocorrelation (= Coefficients biased & dubbel counting over time) -> IV / 2SLS' if DW_pval < self.alpha 
-            else 'conclusion': 'No autocorrelation -> IV / 2SLS'
-        }
-
-        return DW_stat, DW_pval
 
     def jarque_bera_test(self, resid: np.ndarray) -> Tuple[float, float]:
         """Jarque-Bera test for normality. JB = n/6 * (S^2 + 1/4 * (K-3)^2).
