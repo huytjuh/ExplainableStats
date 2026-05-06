@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 import statsmodels.api as sm
 from scipy.special import logsumexp
 
-from ._10_fm import FiniteMixtureRegression
+from ._10_fmr import FiniteMixtureRegression
 
 class OLSComponent:
     """Component of Finite Mixture of Ordinary Least Squares."""

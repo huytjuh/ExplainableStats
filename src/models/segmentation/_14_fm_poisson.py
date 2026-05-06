@@ -5,7 +5,7 @@ from typing import Dict
 from scipy.special import logsumexp
 from scipy.stats import poisson, norm
 
-from ._10_fm import FiniteMixtureRegression
+from ._10_fmr import FiniteMixtureRegression
 
 class PoissonRegressionComponent:
     """Component of Finite Mixture Poisson Regression."""
